@@ -1,9 +1,7 @@
+# Parallelized Conflict-based Search for Multi-Agent Pathfinding
 Here is our project for Carnegie Mellon University 15-618: Parallel Computer Architecture and Programming
 - [Course website](https://www.cs.cmu.edu/~418/)
 - [Code repository](https://github.com/jsongCMU/parallel_CBS)
-
-# Title
-Parallelized Conflict-based Search for Multi-Agent Pathfinding
 
 # Links
 - [Proposal](proposal.html)
