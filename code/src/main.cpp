@@ -6,8 +6,8 @@ int main()
     // Load MAPF problem
     MAPFLoader loader;
 
-    std::string fileName = "../instances/random_map.txt";
-    loader.loadInstanceFromFile(fileName);
+    std::string fileName = "./instances/random_map.txt";
+    MAPFInstance mapfProblem = loader.loadInstanceFromFile(fileName);
 
     // Run specific version of CBS
 
