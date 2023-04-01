@@ -10,5 +10,4 @@ int main()
     MAPFInstance mapfProblem = loader.loadInstanceFromFile(fileName);
 
     // Run specific version of CBS
-
 }

@@ -2,24 +2,7 @@
 #define MAPF_LOADER_H
 
 #include <string>
-#include <vector>
-
-struct Point2 {
-    int x;
-    int y;
-};
-
-struct MAPFInstance
-{
-    int rows;
-    int cols;
-    int numAgents;
-
-    std::vector<std::vector<bool>> map;
-
-    std::vector<Point2> startLocs;
-    std::vector<Point2> goalLocs;
-};
+#include "MAPFInstance.hpp"
 
 class MAPFLoader
 {
