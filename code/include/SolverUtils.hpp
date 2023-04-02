@@ -29,22 +29,11 @@ inline Collision createEdgeCollision(int agent1, int agent2, int t, Point2 locA,
 struct Constraint
 {
     int agentNum;
-    Point2 locationA;
-    Point2 locationB;
     int t;
-
-    // If is a vertex constraint locA == locB
     bool isVertexConstraint;
+
+    //If vertex collision then both locations are the same
+    std::pair<Point2, Point2> location;
 };
-
-inline Constraint createVertexConstraint(int agent, const Point2& loc, int t)
-{
-    return Constraint{agent, loc, loc, t, true};
-}
-
-inline Constraint createEdgeConstraint(int agent, const std::pair<Point2, Point2>& locPair, int t)
-{
-    return Constraint{agent, locPair.first, locPair.second, t, false};
-}
 
 #endif

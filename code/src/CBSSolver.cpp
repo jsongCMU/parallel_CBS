@@ -14,23 +14,17 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
                          CTNodeComparator 
                         > pq;
 
-    printf("test\n");
-
     CTNodeSharedPtr root = std::make_shared<CTNode>();
-    printf("A %d\n", instance.numAgents);
     root->paths.reserve(instance.numAgents);
     root->id = 0;
     numNodesGenerated++;
-    
 
-    printf("B\n");
     // Create paths for all agents
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
         // root->paths.push_back(lowLevelSolver.solve(instance.startLocs[i], instance.goalLocs[i], ));
     }
 
-    printf("A\n");
     root->cost = computeCost(root->paths);
     detectCollisions(root->paths, root->collisionList);
 
@@ -131,10 +125,10 @@ inline std::vector<Constraint> CBSSolver::resolveCollision(const Collision& col)
 {
     if (col.isVertexCollision)
     {
-        return std::vector<Constraint> {createVertexConstraint(col.agent1, col.location.first, col.t), createVertexConstraint(col.agent2, col.location.first, col.t)};
+        return std::vector<Constraint> {Constraint{col.agent1, col.t, true, col.location}, Constraint{col.agent2, col.t, true, col.location}};
     }
     else
     {
-        return std::vector<Constraint> {createEdgeConstraint(col.agent1, col.location, col.t), createEdgeConstraint(col.agent2, col.location, col.t)};
+        return std::vector<Constraint> {Constraint{col.agent1, col.t, false, col.location}, Constraint{col.agent2, col.t, false, col.location}};
     }
 }
