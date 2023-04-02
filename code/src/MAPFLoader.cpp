@@ -85,7 +85,6 @@ void MAPFLoader::parseMap(std::string map_as_txt, MAPFInstance &result)
 {
     // Remove any whitespace from the map   
     map_as_txt.erase(std::remove(map_as_txt.begin(), map_as_txt.end(), ' '), map_as_txt.end());
-    map_as_txt.erase(std::remove(map_as_txt.begin(), map_as_txt.end(), '\n'), map_as_txt.end());
 
     result.map.resize(result.rows);
 
