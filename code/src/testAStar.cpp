@@ -6,7 +6,7 @@
 int main()
 {
     // Directories
-    std::string testFile = "./instances/random_map.txt";
+    std::string testFile = "./instances/test_51.txt";
     std::string resultFile = "./outputs/result.txt";
 
     // Load MAPF problem
@@ -38,6 +38,7 @@ int main()
 
     // Solve Problem
     int failCount=0;
+    int sumOfCosts=0;
     printf("Solver:\n");
     std::vector<std::vector<Point2>> paths;
     for(int i = 0; i < mapfProblem.numAgents; i++)
@@ -51,11 +52,12 @@ int main()
         printf("Found solution for agent %d:\n\t", i);
         std::vector<Point2> path = SAPFsolver.getPath();
         paths.push_back(path);
+        sumOfCosts += path.size();
         for(int j=0; j<path.size(); j++)
             printf("(%d, %d), ", path[j].x, path[j].y);
         printf("\n");
     }
-    printf("Result: passed %d/%d\n", mapfProblem.numAgents-failCount, mapfProblem.numAgents);
+    printf("Result: passed %d/%d, SOC = %d\n", mapfProblem.numAgents-failCount, mapfProblem.numAgents, sumOfCosts);
 
     // Log results
     std::ofstream resultStream;
@@ -63,6 +65,8 @@ int main()
     if(resultStream.is_open()){
         // Give input file name
         resultStream << testFile << "\n";
+        // Sum of costs
+        resultStream << sumOfCosts << "\n";
         // Path of each agent per line
         for(const auto& path: paths)
         {
