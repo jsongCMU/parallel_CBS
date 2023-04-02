@@ -6,4 +6,5 @@ Makefile
 cmake_install.cmake
 parallelCBS
 testAStar
+outputs/
 
