@@ -10,8 +10,17 @@ int main()
     MAPFInstance mapfProblem = loader.loadInstanceFromFile(fileName);
 
     // Display map
-    printf("Map:\n");
+    char ruler[] = "0123456789";
+    printf("Map (%d,%d):\n", mapfProblem.rows, mapfProblem.cols);
+    // Print horizontal ruler
+    printf("  ");
+    for(int i=0; i<mapfProblem.cols; i++){
+        printf("%c ", ruler[i%10]);
+    }
+    printf("\n");
+    // Print map and vertical ruler
     for(int i=0; i<mapfProblem.rows; i++){
+        printf("%c ", ruler[i%10]);
         for(int j=0; j<mapfProblem.cols; j++){
             printf("%s", mapfProblem.map[i][j] ? "@ ": ". ");
         }
