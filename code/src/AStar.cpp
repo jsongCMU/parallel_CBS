@@ -62,7 +62,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id)
             Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
 
             // Skip if out of bounds
-            if (cur->pos.x >= problem.rows || cur->pos.y >= problem.cols)
+            if (cur->pos.x >= problem.rows || cur->pos.y >= problem.cols || cur->pos.x <0 || cur->pos.y < 0)
                 continue;
 
             // Skip if inside obstacle

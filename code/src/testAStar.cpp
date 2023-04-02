@@ -7,6 +7,7 @@ int main()
     MAPFLoader loader;
 
     std::string fileName = "./instances/random_map.txt";
+    printf("Test file: %s\n", fileName.c_str());
     MAPFInstance mapfProblem = loader.loadInstanceFromFile(fileName);
 
     // Display map
