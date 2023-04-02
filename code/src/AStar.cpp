@@ -18,12 +18,12 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id)
     Point2 goal = problem.goalLocs[agent_id];
 
     // Check validity of start and end
-    if(start.x >= problem.cols || start.y >= problem.rows)
+    if(start.x >= problem.rows || start.y >= problem.cols)
     {
         printf("* ERR: AStar Failed: Start position not in bounds\n");
         return false;
     }
-    else if(goal.x >= problem.cols || goal.y >= problem.rows)
+    else if(goal.x >= problem.rows || goal.y >= problem.cols)
     {
         printf("* ERR: AStar Failed: Goal position not in bounds\n");
         return false;
@@ -62,7 +62,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id)
             Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
 
             // Skip if out of bounds
-            if (cur->pos.x >= problem.cols || cur->pos.y >= problem.rows)
+            if (cur->pos.x >= problem.rows || cur->pos.y >= problem.cols)
                 continue;
 
             // Skip if inside obstacle
