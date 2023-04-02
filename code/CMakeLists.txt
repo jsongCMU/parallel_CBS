@@ -6,3 +6,4 @@ include_directories(include/ )
 # SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -O3")
 
 add_executable(parallelCBS src/main.cpp src/MAPFLoader.cpp src/CBSSolver.cpp)
+add_executable(testAStar src/MAPFLoader.cpp src/AStar.cpp src/testAStar.cpp)

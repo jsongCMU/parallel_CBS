@@ -6,6 +6,11 @@
 struct Point2 {
     int x;
     int y;
+    
+    bool operator== (const Point2& rhs)
+    {
+        return x == rhs.x && y == rhs.y;
+    }
 };
 
 struct MAPFInstance
