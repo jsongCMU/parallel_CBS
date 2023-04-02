@@ -1,9 +1,10 @@
 #ifndef CBS_SOLVER_H
 #define CBS_SOLVER_H
 
-#include "MAPFInstance.hpp"
 #include <memory>
 #include <tuple>
+#include "MAPFInstance.hpp"
+#include "SolverUtils.hpp"
 
 class CBSSolver
 {
@@ -13,21 +14,11 @@ public:
     std::vector<std::vector<Point2>> solve(MAPFInstance instance);
 
 private:
-    struct Collision
-    {
-        int agent1;
-        int agent2;
-        int t;
-        bool isVertexCollision;
-        std::tuple<Point2,Point2> location;
-    };
-
-    struct Constraint
-    {
-        int agentNum;
-        Point2 location;
-        int t;
-    };
+    int inline computeCost(const std::vector<std::vector<Point2>> &paths);
+    void detectCollisions(const std::vector<std::vector<Point2>> &paths, std::vector<Collision> &collisionList);
+    inline bool detectCollision(int agent1, int agent2, const std::vector<Point2> &pathA, const std::vector<Point2> &pathB, Collision &col);
+    inline Point2 getLocation(const std::vector<Point2> &path, int t);
+    inline std::vector<Constraint> resolveCollision(const Collision &col);
 
     struct CTNode
     {
@@ -59,8 +50,16 @@ private:
         }
     };
 
-    int numNodesGenerated;
+    class NoSolutionException : public std::exception
+    {
+        char *what()
+        {
+            return (char*)"No Solution exists for the given MAPF instance";
+        }
+    };
 
+    int numNodesGenerated;
+    // AStarSolver lowLevelSolver;
 };
 
 #endif
