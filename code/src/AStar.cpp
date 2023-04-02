@@ -39,6 +39,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id)
 
     NodeSharedPtr root = std::make_shared<Node>();
     root->f = root->g = root->h = 0.0f;
+    root->t = 0;
     root->pos = start;
 
     open_list.push(root);
@@ -88,6 +89,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id)
                     existing_node->g = cur_travel_cost;
                     existing_node->f = existing_node->h + cur_travel_cost;
                     existing_node->parent = cur;
+                    existing_node->t = cur->t+1;
                     
                     // We need to update the nodes position in the prio queue but 
                     // either we create a duplicate (and suffer overhead of re-expanding
@@ -104,6 +106,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id)
                 nbr_node->g = cur->g + _travel_cost[dir];
                 nbr_node->h = computeHeuristic(nbr_pos, goal);
                 nbr_node->f = nbr_node->g + nbr_node->h;
+                nbr_node->t = cur->t+1;
                 nbr_node->parent = cur;
 
                 // Add to visited

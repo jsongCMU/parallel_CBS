@@ -13,6 +13,7 @@ struct Node
     float g; // Cost to come
     float h; // Cost to go (heuristic)
     float f; // Total cost (estimate)
+    int t; // Timestep
 
     bool isClosed;
     std::shared_ptr<Node> parent;
