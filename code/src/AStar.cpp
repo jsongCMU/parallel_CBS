@@ -44,12 +44,16 @@ bool AStar::isConstrained(const Point2 &currLoc, const Point2 &nextLoc, const in
         if (constraint.t != nextTime)
             continue;
         if (constraint.isVertexConstraint)
+        {
             if (constraint.location.first == nextLoc)
                 return true;
-            else if (
-                (constraint.location.first == currLoc && constraint.location.second == nextLoc) ||
-                (constraint.location.first == nextLoc && constraint.location.second == currLoc))
-                return true;
+        }
+        else if (
+            (constraint.location.first == currLoc && constraint.location.second == nextLoc) ||
+            (constraint.location.first == nextLoc && constraint.location.second == currLoc))
+        {
+            return true;
+        }
     }
     return false;
 }
