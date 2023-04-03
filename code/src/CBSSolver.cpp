@@ -22,7 +22,10 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
     // Create paths for all agents
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
-        // root->paths.push_back(lowLevelSolver.solve(instance.startLocs[i], instance.goalLocs[i], ));
+        bool found = lowLevelSolver.solve(instance, i, root->constraintList, root->paths[i]);
+        
+        if (!found)
+            throw NoSolutionException();
     }
 
     root->cost = computeCost(root->paths);
@@ -42,21 +45,22 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
         // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
         for (Constraint &c : resolveCollision(cur->collisionList[0]))
         {
+            // Add new constraint
             CTNodeSharedPtr child = std::make_shared<CTNode>();
             child->constraintList = cur->constraintList;
             child->constraintList.push_back(c);
-
             child->paths = cur->paths;
 
-            // std::vector<Point2> newPath = lowLevelSolver.solve(instance.startLocs[c.agentNum], instance.goalLocs[c.agentNum], );
-            std::vector<Point2> newPath;
+            // Replan only for the agent that has the new constraint
+            bool success = lowLevelSolver.solve(instance, c.agentNum, child->constraintList, child->paths[c.agentNum]);
 
-            if (newPath.size() > 0)
+            if (success)
             {
-                child->paths[c.agentNum] = std::move(newPath);
+                // Update cost and find collisions
                 child->cost = computeCost(child->paths);
                 detectCollisions(child->paths, child->collisionList);
 
+                // Add to search queue
                 pq.push(child);
             }
         }

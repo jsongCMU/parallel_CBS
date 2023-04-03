@@ -5,6 +5,7 @@
 #include <tuple>
 #include "MAPFInstance.hpp"
 #include "SolverUtils.hpp"
+#include "AStar.hpp"
 
 class CBSSolver
 {
@@ -59,7 +60,7 @@ private:
     };
 
     int numNodesGenerated;
-    // AStarSolver lowLevelSolver;
+    AStar lowLevelSolver;
 };
 
 #endif
