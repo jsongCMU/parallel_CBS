@@ -37,14 +37,14 @@ public:
 private:
     void computePath(NodeSharedPtr goal);
     float computeHeuristic(const Point2& start, const Point2& goal);
-    int computeHash(const Point2& pos);
+    int computeHash(const Point2& pos, const int t);
     ConstraintsTable buildConstraintsTable(const std::vector<Constraint>& constraints, const int agent_id, int& maxTimestep);
     bool isConstrained(const Point2& currLoc, const Point2& nextLoc, const int nextTime, const ConstraintsTable& constraintsTable);
     std::vector<Point2> _path;
 
-    const int _dx[8] = {1, -1, 0, 0, 1, 1, -1, -1};
-    const int _dy[8] = {0, 0, 1, -1, 1, -1, 1, -1};
-    const float _travel_cost[8] = {1, 1, 1, 1, DIAGONAL, DIAGONAL, DIAGONAL, DIAGONAL};
+    const int _dx[9] = {1, -1, 0, 0, 0, 1, 1, -1, -1};
+    const int _dy[9] = {0, 0, 1, -1, 0, 1, -1, 1, -1};
+    const float _travel_cost[9] = {1, 1, 1, 1, 1, DIAGONAL, DIAGONAL, DIAGONAL, DIAGONAL};
 };
 
 class NodeComparator

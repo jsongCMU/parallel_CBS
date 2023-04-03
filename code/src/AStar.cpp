@@ -6,11 +6,11 @@
 
 /* 
 Defines connectivity of neighbourhood
- 4 or 8 works but 8 is always better
+ 4 or 8 (+1 for wait) works but 8 is always better
  NOTE: If you change to 4, need to change
  heuristic as well.
 */
-#define NBR_CONNECTEDNESS 8
+#define NBR_CONNECTEDNESS 9
 
 ConstraintsTable AStar::buildConstraintsTable(const std::vector<Constraint>& constraints, const int agent_id, int& maxTimestep)
 {
@@ -25,15 +25,9 @@ ConstraintsTable AStar::buildConstraintsTable(const std::vector<Constraint>& con
         // Add/append to constraints
         const int curTime = constraint.t;
         if (constraintsTable.find(curTime) != constraintsTable.end())
-        {
-            printf("Updating constraint!\n");
             constraintsTable[curTime].push_back(constraint);
-        }
         else
-        {
-            printf("New constraint!\n");
             constraintsTable.insert({curTime, {constraint}});
-        }
         // Update max time
         maxTimestep = (curTime > maxTimestep) ? curTime : maxTimestep;
     }
@@ -96,7 +90,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
     root->pos = start;
 
     open_list.push(root);
-    visited.insert({computeHash(start), root});
+    visited.insert({computeHash(start, root->t), root});
 
     while (!open_list.empty())
     {
@@ -116,18 +110,18 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
             Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
 
             // Skip if out of bounds
-            if (cur->pos.x >= problem.rows || cur->pos.y >= problem.cols || cur->pos.x <0 || cur->pos.y < 0)
+            if (nbr_pos.x >= problem.rows || nbr_pos.y >= problem.cols || nbr_pos.x <0 || nbr_pos.y < 0)
                 continue;
 
             // Skip if inside obstacle
-            if (problem.map[cur->pos.x][cur->pos.y])
+            if (problem.map[nbr_pos.x][nbr_pos.y])
                 continue;
             
             // Skip if violates constraints table
             if (isConstrained(cur->pos, nbr_pos, cur->t+1, constraintsTable))
                 continue;
 
-            int hash = computeHash(nbr_pos);
+            int hash = computeHash(nbr_pos, cur->t+1);
 
             // Check if a node already exists
             if (visited.find(hash) != visited.end())
@@ -204,8 +198,8 @@ float AStar::computeHeuristic(const Point2& start, const Point2& goal)
 }
 
 
-int AStar::computeHash(const Point2& pos)
+int AStar::computeHash(const Point2& pos, const int t)
 {
     // Only works for maps with a height less than 100000
-    return pos.x * 100000 + pos.y;
+    return (pos.x * 1000 + pos.y)*1000 + t;
 }
