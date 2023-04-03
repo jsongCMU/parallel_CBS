@@ -40,6 +40,27 @@ ConstraintsTable AStar::buildConstraintsTable(const std::vector<Constraint>& con
     return constraintsTable;
 }
 
+bool AStar::isConstrained(const Point2& currLoc, const Point2& nextLoc, const int nextTime, const ConstraintsTable& constraintsTable)
+{
+    if (constraintsTable.find(nextTime) == constraintsTable.end())
+        return false;
+    const auto& constraints = constraintsTable.at(nextTime);
+    for(const auto& constraint : constraints)
+    {
+        if(constraint.t != nextTime)
+            continue;
+        if(constraint.isVertexConstraint)
+            if(constraint.location.first == nextLoc)
+                return true;
+        else 
+            if(
+                (constraint.location.first == currLoc && constraint.location.second == nextLoc) || 
+                (constraint.location.first == nextLoc && constraint.location.second == currLoc))
+                return true;
+    }
+    return false;
+}
+
 bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::vector<Constraint>& constraints)
 {
     Point2 start = problem.startLocs[agent_id];
@@ -100,6 +121,10 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
 
             // Skip if inside obstacle
             if (problem.map[cur->pos.x][cur->pos.y])
+                continue;
+            
+            // Skip if violates constraints table
+            if (isConstrained(cur->pos, nbr_pos, cur->t+1, constraintsTable))
                 continue;
 
             int hash = computeHash(nbr_pos);

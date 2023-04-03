@@ -39,6 +39,7 @@ private:
     float computeHeuristic(const Point2& start, const Point2& goal);
     int computeHash(const Point2& pos);
     ConstraintsTable buildConstraintsTable(const std::vector<Constraint>& constraints, const int agent_id, int& maxTimestep);
+    bool isConstrained(const Point2& currLoc, const Point2& nextLoc, const int nextTime, const ConstraintsTable& constraintsTable);
     std::vector<Point2> _path;
 
     const int _dx[8] = {1, -1, 0, 0, 1, 1, -1, -1};
