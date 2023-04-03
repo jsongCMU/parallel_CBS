@@ -6,9 +6,9 @@
 
 int main()
 {
-    std::string path = "./instances";
-    std::string resultFile = "./outputs/result.txt";
-    std::string animateFile = "./instances/exp0.txt";
+    std::string path = "../instances";
+    std::string resultFile = "../outputs/result.txt";
+    std::string animateFile = "../instances/exp0.txt";
     int testResult = 0;
     for (const auto & entry : std::filesystem::directory_iterator(path)){
         // Directories
