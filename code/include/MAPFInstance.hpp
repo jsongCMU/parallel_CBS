@@ -1,22 +1,18 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include <ostream>
 #include <vector>
 
 struct Point2 {
     int x;
     int y;
     
-    bool operator== (const Point2& rhs)
+    bool operator== (const Point2& rhs) const
     {
         return x == rhs.x && y == rhs.y;
     }
 };
-
-inline bool operator==(const Point2 &lhs, const Point2 &rhs)
-{
-    return lhs.x == rhs.x && lhs.y == rhs.y;
-}
 
 struct MAPFInstance
 {
