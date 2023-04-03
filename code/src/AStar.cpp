@@ -174,16 +174,15 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
 
 void AStar::computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath)
 {
-    std::vector<Point2> results;
     NodeSharedPtr cur = goal;
     while(cur != nullptr)
     {
-        results.push_back(cur->pos);
+        outputPath.push_back(cur->pos);
         cur = cur->parent;
     }
 
     // Reverse path so we have from start to goal
-    std::reverse(results.begin(), results.end());
+    std::reverse(outputPath.begin(), outputPath.end());
 }
 
 

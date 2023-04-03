@@ -13,15 +13,16 @@ void saveToFile(std::string resultFile, std::string mapfFile, const std::vector<
     for (int i = 0; i < paths.size(); i++)
         sumOfCosts += paths[i].size();
 
-    if(resultStream.is_open()){
+    if (resultStream.is_open())
+    {
         // Give input file name
         resultStream << mapfFile << "\n";
         // Sum of costs
         resultStream << sumOfCosts << "\n";
         // Path of each agent per line
-        for(const auto& path: paths)
+        for (const auto &path : paths)
         {
-            for(const auto& loc: path)
+            for (const auto &loc : path)
             {
                 resultStream << "(" << loc.x << "," << loc.y << "); ";
             }
@@ -41,7 +42,7 @@ int main()
     // Load MAPF problem
     MAPFLoader loader;
 
-    std::string resultFile = "../instances/outputs/result.txt";
+    std::string resultFile = "../outputs/result.txt";
     std::string fileName = "../instances/exp0.txt";
     MAPFInstance mapfProblem = loader.loadInstanceFromFile(fileName);
 
