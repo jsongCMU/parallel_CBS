@@ -13,6 +13,11 @@ struct Point2 {
     }
 };
 
+inline bool operator==(const Point2 &lhs, const Point2 &rhs)
+{
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
 struct MAPFInstance
 {
     int rows;

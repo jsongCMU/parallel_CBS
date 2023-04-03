@@ -8,4 +8,9 @@ parallelCBS
 testAStar
 outputs/
 __pycache__
+TestAStar
+TestMAPFLoader
+Testing/
+CTestTestfile.cmake
+DartConfiguration.tcl
 
