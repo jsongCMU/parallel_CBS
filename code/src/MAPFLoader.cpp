@@ -26,6 +26,8 @@ MAPFInstance MAPFLoader::loadInstanceFromFile(const std::string &fileName)
         printf("ERROR: File was not opened\n");
     }
 
+    txtFile.close();
+
     return result;
 }
 
