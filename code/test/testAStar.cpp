@@ -28,7 +28,8 @@ int main()
         std::vector<std::vector<Point2>> paths;
         for(int i = 0; i < mapfProblem.numAgents; i++)
         {
-            bool succ = SAPFsolver.solve(mapfProblem, i);
+            std::vector<Constraint> constraints;
+            bool succ = SAPFsolver.solve(mapfProblem, i, constraints);
             if(!succ){
                 printf("* Failed to solve for agent %d: (%d,%d) -> (%d,%d)\n", i, mapfProblem.startLocs[i].x, mapfProblem.startLocs[i].y, mapfProblem.goalLocs[i].x, mapfProblem.goalLocs[i].y);
                 failCount++;

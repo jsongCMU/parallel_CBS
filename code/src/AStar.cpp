@@ -12,10 +12,42 @@ Defines connectivity of neighbourhood
 */
 #define NBR_CONNECTEDNESS 8
 
-bool AStar::solve(const MAPFInstance& problem, const int agent_id)
+ConstraintsTable AStar::buildConstraintsTable(const std::vector<Constraint>& constraints, const int agent_id, int& maxTimestep)
+{
+    // ConstraintsTable: timestep -> vector of constraints for specific agent
+    maxTimestep = 0;
+    ConstraintsTable constraintsTable;
+    for(const auto& constraint : constraints)
+    {
+        // Only care about constraints for specified agent
+        if(constraint.agentNum != agent_id)
+            continue;
+        // Add/append to constraints
+        const int curTime = constraint.t;
+        if (constraintsTable.find(curTime) != constraintsTable.end())
+        {
+            printf("Updating constraint!\n");
+            constraintsTable[curTime].push_back(constraint);
+        }
+        else
+        {
+            printf("New constraint!\n");
+            constraintsTable.insert({curTime, {constraint}});
+        }
+        // Update max time
+        maxTimestep = (curTime > maxTimestep) ? curTime : maxTimestep;
+    }
+    return constraintsTable;
+}
+
+bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::vector<Constraint>& constraints)
 {
     Point2 start = problem.startLocs[agent_id];
     Point2 goal = problem.goalLocs[agent_id];
+
+    // Create constraints table
+    int maxTimestep;
+    ConstraintsTable constraintsTable = buildConstraintsTable(constraints, agent_id, maxTimestep);
 
     // Check validity of start and end
     if(start.x >= problem.rows || start.y >= problem.cols)
