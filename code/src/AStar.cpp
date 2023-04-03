@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <algorithm>
 
-/* 
+/*
 Defines connectivity of neighbourhood
  4 or 8 (+1 for wait) works but 8 is always better
  NOTE: If you change to 4, need to change
@@ -12,15 +12,15 @@ Defines connectivity of neighbourhood
 */
 #define NBR_CONNECTEDNESS 9
 
-ConstraintsTable AStar::buildConstraintsTable(const std::vector<Constraint>& constraints, const int agent_id, int& maxTimestep)
+ConstraintsTable AStar::buildConstraintsTable(const std::vector<Constraint> &constraints, const int agent_id, int &maxTimestep)
 {
     // ConstraintsTable: timestep -> vector of constraints for specific agent
     maxTimestep = 0;
     ConstraintsTable constraintsTable;
-    for(const auto& constraint : constraints)
+    for (const auto &constraint : constraints)
     {
         // Only care about constraints for specified agent
-        if(constraint.agentNum != agent_id)
+        if (constraint.agentNum != agent_id)
             continue;
         // Add/append to constraints
         const int curTime = constraint.t;
@@ -34,28 +34,27 @@ ConstraintsTable AStar::buildConstraintsTable(const std::vector<Constraint>& con
     return constraintsTable;
 }
 
-bool AStar::isConstrained(const Point2& currLoc, const Point2& nextLoc, const int nextTime, const ConstraintsTable& constraintsTable)
+bool AStar::isConstrained(const Point2 &currLoc, const Point2 &nextLoc, const int nextTime, const ConstraintsTable &constraintsTable)
 {
     if (constraintsTable.find(nextTime) == constraintsTable.end())
         return false;
-    const auto& constraints = constraintsTable.at(nextTime);
-    for(const auto& constraint : constraints)
+    const auto &constraints = constraintsTable.at(nextTime);
+    for (const auto &constraint : constraints)
     {
-        if(constraint.t != nextTime)
+        if (constraint.t != nextTime)
             continue;
-        if(constraint.isVertexConstraint)
-            if(constraint.location.first == nextLoc)
+        if (constraint.isVertexConstraint)
+            if (constraint.location.first == nextLoc)
                 return true;
-        else 
-            if(
-                (constraint.location.first == currLoc && constraint.location.second == nextLoc) || 
+            else if (
+                (constraint.location.first == currLoc && constraint.location.second == nextLoc) ||
                 (constraint.location.first == nextLoc && constraint.location.second == currLoc))
                 return true;
     }
     return false;
 }
 
-bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::vector<Constraint>& constraints, std::vector<Point2> &outputPath)
+bool AStar::solve(const MAPFInstance &problem, const int agent_id, const std::vector<Constraint> &constraints, std::vector<Point2> &outputPath)
 {
     Point2 start = problem.startLocs[agent_id];
     Point2 goal = problem.goalLocs[agent_id];
@@ -65,22 +64,22 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
     ConstraintsTable constraintsTable = buildConstraintsTable(constraints, agent_id, maxTimestep);
 
     // Check validity of start and end
-    if(start.x >= problem.rows || start.y >= problem.cols)
+    if (start.x >= problem.rows || start.y >= problem.cols)
     {
         printf("* ERR: AStar Failed: Start position not in bounds\n");
         return false;
     }
-    else if(goal.x >= problem.rows || goal.y >= problem.cols)
+    else if (goal.x >= problem.rows || goal.y >= problem.cols)
     {
         printf("* ERR: AStar Failed: Goal position not in bounds\n");
         return false;
     }
 
     // Create open list and visited map
-    std::priority_queue <NodeSharedPtr, 
-                         std::vector<NodeSharedPtr>, 
-                         NodeComparator 
-                        > open_list;
+    std::priority_queue<NodeSharedPtr,
+                        std::vector<NodeSharedPtr>,
+                        NodeComparator>
+        open_list;
 
     std::unordered_map<int, NodeSharedPtr> visited;
 
@@ -97,7 +96,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
         NodeSharedPtr cur = open_list.top();
         open_list.pop();
 
-        if (cur->pos == goal)
+        if (cur->pos == goal && cur->t >= maxTimestep)
         {
             computePath(cur, outputPath);
             return true;
@@ -110,18 +109,18 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
             Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
 
             // Skip if out of bounds
-            if (nbr_pos.x >= problem.rows || nbr_pos.y >= problem.cols || nbr_pos.x <0 || nbr_pos.y < 0)
+            if (nbr_pos.x >= problem.rows || nbr_pos.y >= problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
                 continue;
 
             // Skip if inside obstacle
             if (problem.map[nbr_pos.x][nbr_pos.y])
                 continue;
-            
+
             // Skip if violates constraints table
-            if (isConstrained(cur->pos, nbr_pos, cur->t+1, constraintsTable))
+            if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
                 continue;
 
-            int hash = computeHash(nbr_pos, cur->t+1);
+            int hash = computeHash(nbr_pos, cur->t + 1);
 
             // Check if a node already exists
             if (visited.find(hash) != visited.end())
@@ -140,9 +139,9 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
                     existing_node->g = cur_travel_cost;
                     existing_node->f = existing_node->h + cur_travel_cost;
                     existing_node->parent = cur;
-                    existing_node->t = cur->t+1;
-                    
-                    // We need to update the nodes position in the prio queue but 
+                    existing_node->t = cur->t + 1;
+
+                    // We need to update the nodes position in the prio queue but
                     // either we create a duplicate (and suffer overhead of re-expanding
                     // node) or we heapify the current priority queue (and suffer overhead
                     // of O(N) for elements in priority queue)
@@ -157,7 +156,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
                 nbr_node->g = cur->g + _travel_cost[dir];
                 nbr_node->h = computeHeuristic(nbr_pos, goal);
                 nbr_node->f = nbr_node->g + nbr_node->h;
-                nbr_node->t = cur->t+1;
+                nbr_node->t = cur->t + 1;
                 nbr_node->parent = cur;
 
                 // Add to visited
@@ -171,11 +170,10 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
     return false;
 }
 
-
 void AStar::computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath)
 {
     NodeSharedPtr cur = goal;
-    while(cur != nullptr)
+    while (cur != nullptr)
     {
         outputPath.push_back(cur->pos);
         cur = cur->parent;
@@ -185,8 +183,7 @@ void AStar::computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath)
     std::reverse(outputPath.begin(), outputPath.end());
 }
 
-
-float AStar::computeHeuristic(const Point2& start, const Point2& goal)
+float AStar::computeHeuristic(const Point2 &start, const Point2 &goal)
 {
     // Use octile distance since its an exact heuristic for 8 connected grids
     int dx = abs(start.x - goal.x);
@@ -194,9 +191,8 @@ float AStar::computeHeuristic(const Point2& start, const Point2& goal)
     return std::max(dx, dy) - std::min(dx, dy) + DIAGONAL * std::min(dx, dy);
 }
 
-
-int AStar::computeHash(const Point2& pos, const int t)
+int AStar::computeHash(const Point2 &pos, const int t)
 {
     // Only works for maps with a height less than 100000
-    return (pos.x * 1000 + pos.y)*1000 + t;
+    return (pos.x * 1000 + pos.y) * 1000 + t;
 }

@@ -30,36 +30,34 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
             throw NoSolutionException();
     }
 
-    root->cost = computeCost(root->paths);
+    root->cost = 0;
     detectCollisions(root->paths, root->collisionList);
 
     pq.push(root);
 
     while (!pq.empty())
     {
-        printf("Loop start\n");
         CTNodeSharedPtr cur = pq.top();
         pq.pop();
 
         // If no collisions in the node then return solution
-        if (cur->collisionList.size() == 0)
+        if (cur->constraintList.size() == 5)
+        {
             return cur->paths;
+        }
 
         // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
         for (Constraint &c : resolveCollision(cur->collisionList[0]))
         {
-            printf("A\n");
-            
             // Add new constraint
             CTNodeSharedPtr child = std::make_shared<CTNode>();
             child->constraintList = cur->constraintList;
             child->constraintList.push_back(c);
             child->paths = cur->paths;
 
-            printf("B %d\n", c.agentNum);
             // Replan only for the agent that has the new constraint
+            child->paths[c.agentNum].clear();
             bool success = lowLevelSolver.solve(instance, c.agentNum, child->constraintList, child->paths[c.agentNum]);
-            printf("C\n");
 
             if (success)
             {
@@ -67,11 +65,9 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
                 child->cost = computeCost(child->paths);
                 detectCollisions(child->paths, child->collisionList);
 
-                printf("D\n");
                 // Add to search queue
                 pq.push(child);
             }
-            printf("E\n");
         }
     }
 
@@ -115,7 +111,7 @@ inline bool CBSSolver::detectCollision(int agent1, int agent2, const std::vector
     {
         if (getLocation(pathA, t) == getLocation(pathB, t))
         {
-            col = createVertexCollision(agent1, agent2, t, pathA[t]);
+            col = createVertexCollision(agent1, agent2, t, getLocation(pathA, t));
             return true;
         }
 
@@ -133,7 +129,6 @@ inline Point2 CBSSolver::getLocation(const std::vector<Point2> &path, int t)
 {
     if (t >= path.size())
         return path[path.size() - 1];
-
     else
         return path[t];
 }
