@@ -27,20 +27,14 @@ typedef std::unordered_map<int, std::vector<Constraint>> ConstraintsTable;
 class AStar
 {
 public:
-    bool solve(const MAPFInstance& problem, const int agent_id, const std::vector<Constraint>& constraints);
-
-    std::vector<Point2> getPath()
-    {
-        return _path;
-    }
-
+    bool solve(const MAPFInstance& problem, const int agent_id, const std::vector<Constraint>& constraints, std::vector<Point2> &outputPath);
 private:
-    void computePath(NodeSharedPtr goal);
+    void computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath);
     float computeHeuristic(const Point2& start, const Point2& goal);
     int computeHash(const Point2& pos, const int t);
     ConstraintsTable buildConstraintsTable(const std::vector<Constraint>& constraints, const int agent_id, int& maxTimestep);
     bool isConstrained(const Point2& currLoc, const Point2& nextLoc, const int nextTime, const ConstraintsTable& constraintsTable);
-    std::vector<Point2> _path;
+    
 
     const int _dx[9] = {1, -1, 0, 0, 0, 1, 1, -1, -1};
     const int _dy[9] = {0, 0, 1, -1, 0, 1, -1, 1, -1};

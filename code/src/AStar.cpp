@@ -55,7 +55,7 @@ bool AStar::isConstrained(const Point2& currLoc, const Point2& nextLoc, const in
     return false;
 }
 
-bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::vector<Constraint>& constraints)
+bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::vector<Constraint>& constraints, std::vector<Point2> &outputPath)
 {
     Point2 start = problem.startLocs[agent_id];
     Point2 goal = problem.goalLocs[agent_id];
@@ -99,7 +99,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
 
         if (cur->pos == goal)
         {
-            computePath(cur);
+            computePath(cur, outputPath);
             return true;
         }
 
@@ -172,7 +172,7 @@ bool AStar::solve(const MAPFInstance& problem, const int agent_id, const std::ve
 }
 
 
-void AStar::computePath(NodeSharedPtr goal)
+void AStar::computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath)
 {
     std::vector<Point2> results;
     NodeSharedPtr cur = goal;
@@ -184,8 +184,6 @@ void AStar::computePath(NodeSharedPtr goal)
 
     // Reverse path so we have from start to goal
     std::reverse(results.begin(), results.end());
-
-    _path = results;
 }
 
 

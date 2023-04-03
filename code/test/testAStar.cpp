@@ -29,14 +29,15 @@ int main()
         for(int i = 0; i < mapfProblem.numAgents; i++)
         {
             std::vector<Constraint> constraints;
-            bool succ = SAPFsolver.solve(mapfProblem, i, constraints);
+            std::vector<Point2> path;
+
+            bool succ = SAPFsolver.solve(mapfProblem, i, constraints, path);
             if(!succ){
                 printf("* Failed to solve for agent %d: (%d,%d) -> (%d,%d)\n", i, mapfProblem.startLocs[i].x, mapfProblem.startLocs[i].y, mapfProblem.goalLocs[i].x, mapfProblem.goalLocs[i].y);
                 failCount++;
                 testResult = 1;
                 continue;
             }
-            std::vector<Point2> path = SAPFsolver.getPath();
             paths.push_back(path);
             sumOfCosts += path.size();
         }
