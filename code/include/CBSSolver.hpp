@@ -60,7 +60,6 @@ private:
     };
 
     int numNodesGenerated;
-    AStar lowLevelSolver;
 };
 
 #endif
