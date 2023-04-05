@@ -8,6 +8,8 @@ int main()
     std::string resultFile = "../outputs/result.txt";
     std::string animateFile = "../instances/exp0.txt";
     int testResult = 0;
+    TestTimer ttimer;
+    ttimer.start();
     for (const auto & entry : std::filesystem::directory_iterator(path)){
         // Directories
         std::string testFile = entry.path();
@@ -40,6 +42,7 @@ int main()
             sumOfCosts += path.size();
         }
         printf("SOC = %d\n", sumOfCosts);
+        printf("Elapsed time = %f ms\n", ttimer.elapsed(true));
 
         // Log results for specific test file
         if(testFile == animateFile){
