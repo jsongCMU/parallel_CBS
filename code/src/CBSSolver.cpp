@@ -10,6 +10,9 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
 {
     printf("Starting CBS Solver\n");
 
+    // Initialize low level solver
+    AStar lowLevelSolver(instance);
+
     // Create priority queue
     std::priority_queue <CTNodeSharedPtr, 
                          std::vector<CTNodeSharedPtr>, 
@@ -24,7 +27,7 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
     // Create paths for all agents
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
-        bool found = lowLevelSolver.solve(instance, i, root->constraintList, root->paths[i]);
+        bool found = lowLevelSolver.solve(i, root->constraintList, root->paths[i]);
         
         if (!found)
             throw NoSolutionException();
@@ -59,7 +62,7 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
 
             // Replan only for the agent that has the new constraint
             child->paths[c.agentNum].clear();
-            bool success = lowLevelSolver.solve(instance, c.agentNum, child->constraintList, child->paths[c.agentNum]);
+            bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
 
             if (success)
             {

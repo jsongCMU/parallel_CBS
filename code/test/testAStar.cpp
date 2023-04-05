@@ -1,6 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <filesystem>
+#include "TesterUtils.hpp"
 #include "MAPFLoader.hpp"
 #include "AStar.hpp"
 
@@ -10,6 +8,8 @@ int main()
     std::string resultFile = "../outputs/result.txt";
     std::string animateFile = "../instances/exp0.txt";
     int testResult = 0;
+    TestTimer ttimer;
+    ttimer.start();
     for (const auto & entry : std::filesystem::directory_iterator(path)){
         // Directories
         std::string testFile = entry.path();
@@ -20,7 +20,7 @@ int main()
         MAPFInstance mapfProblem = loader.loadInstanceFromFile(testFile);
 
         // Create A* solver
-        AStar SAPFsolver;
+        AStar SAPFsolver(mapfProblem);
 
         // Solve Problem
         int failCount=0;
@@ -31,7 +31,7 @@ int main()
             std::vector<Constraint> constraints;
             std::vector<Point2> path;
 
-            bool succ = SAPFsolver.solve(mapfProblem, i, constraints, path);
+            bool succ = SAPFsolver.solve(i, constraints, path);
             if(!succ){
                 printf("* Failed to solve for agent %d: (%d,%d) -> (%d,%d)\n", i, mapfProblem.startLocs[i].x, mapfProblem.startLocs[i].y, mapfProblem.goalLocs[i].x, mapfProblem.goalLocs[i].y);
                 failCount++;
@@ -42,32 +42,12 @@ int main()
             sumOfCosts += path.size();
         }
         printf("SOC = %d\n", sumOfCosts);
+        printf("Elapsed time = %f ms\n", ttimer.elapsed(true));
 
         // Log results for specific test file
         if(testFile == animateFile){
-            std::ofstream resultStream;
-            resultStream.open (resultFile);
-            if(resultStream.is_open()){
-                // Give input file name
-                resultStream << testFile << "\n";
-                // Sum of costs
-                resultStream << sumOfCosts << "\n";
-                // Path of each agent per line
-                for(const auto& path: paths)
-                {
-                    for(const auto& loc: path)
-                    {
-                        resultStream << "(" << loc.x << "," << loc.y << "); ";
-                    }
-                    resultStream << "\n";
-                }
-                resultStream.close();
-                printf("Saved paths to %s\n", resultFile.c_str());
-            }
-            else
-            {
-                printf("* Could not open result file!\n");
-            }
+            saveToFile(resultFile, testFile, paths);
+            ttimer.elapsed(true);
         }
     }
     return testResult;

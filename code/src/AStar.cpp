@@ -58,22 +58,22 @@ bool AStar::isConstrained(const Point2 &currLoc, const Point2 &nextLoc, const in
     return false;
 }
 
-bool AStar::solve(const MAPFInstance &problem, const int agent_id, const std::vector<Constraint> &constraints, std::vector<Point2> &outputPath)
+bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints, std::vector<Point2> &outputPath)
 {
-    Point2 start = problem.startLocs[agent_id];
-    Point2 goal = problem.goalLocs[agent_id];
+    Point2 start = _problem.startLocs[agent_id];
+    Point2 goal = _problem.goalLocs[agent_id];
 
     // Create constraints table
     int maxTimestep;
     ConstraintsTable constraintsTable = buildConstraintsTable(constraints, agent_id, maxTimestep);
 
     // Check validity of start and end
-    if (start.x >= problem.rows || start.y >= problem.cols)
+    if (start.x >= _problem.rows || start.y >= _problem.cols)
     {
         printf("* ERR: AStar Failed: Start position not in bounds\n");
         return false;
     }
-    else if (goal.x >= problem.rows || goal.y >= problem.cols)
+    else if (goal.x >= _problem.rows || goal.y >= _problem.cols)
     {
         printf("* ERR: AStar Failed: Goal position not in bounds\n");
         return false;
@@ -113,11 +113,11 @@ bool AStar::solve(const MAPFInstance &problem, const int agent_id, const std::ve
             Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
 
             // Skip if out of bounds
-            if (nbr_pos.x >= problem.rows || nbr_pos.y >= problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
+            if (nbr_pos.x >= _problem.rows || nbr_pos.y >= _problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
                 continue;
 
             // Skip if inside obstacle
-            if (problem.map[nbr_pos.x][nbr_pos.y])
+            if (_problem.map[nbr_pos.x][nbr_pos.y])
                 continue;
 
             // Skip if violates constraints table
@@ -158,7 +158,7 @@ bool AStar::solve(const MAPFInstance &problem, const int agent_id, const std::ve
                 NodeSharedPtr nbr_node = std::make_shared<Node>();
                 nbr_node->pos = nbr_pos;
                 nbr_node->g = cur->g + _travel_cost[dir];
-                nbr_node->h = computeHeuristic(nbr_pos, goal);
+                nbr_node->h = _heuristicMap[agent_id][nbr_pos.x][nbr_pos.y];
                 nbr_node->f = nbr_node->g + nbr_node->h;
                 nbr_node->t = cur->t + 1;
                 nbr_node->parent = cur;
@@ -185,6 +185,31 @@ void AStar::computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath)
 
     // Reverse path so we have from start to goal
     std::reverse(outputPath.begin(), outputPath.end());
+}
+
+void AStar::computeHeuristicMap()
+{
+    // For each agent, compute heuristic for each cell in map
+    _heuristicMap.clear();
+    _heuristicMap.resize(_problem.numAgents);
+    for(int id=0; id<_problem.numAgents; id++)
+    {
+        Point2 goal=_problem.goalLocs[id];
+        _heuristicMap[id].resize(_problem.map.size());
+        for(int i=0; i<_problem.map.size(); i++)
+        {
+            _heuristicMap[id][i].resize(_problem.map[i].size());
+            for(int j=0; j<_problem.map[i].size(); j++)
+            {
+                if(_problem.map[i][j])
+                    _heuristicMap[id][i][j] = 1e30;
+                else
+                {
+                    _heuristicMap[id][i][j] = computeHeuristic({i,j}, goal);
+                }
+            }
+        }
+    }
 }
 
 float AStar::computeHeuristic(const Point2 &start, const Point2 &goal)
