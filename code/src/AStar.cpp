@@ -189,23 +189,102 @@ void AStar::computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath)
 
 void AStar::computeHeuristicMap()
 {
-    // For each agent, compute heuristic for each cell in map
+    // For each agent, compute heuristic using Dijkstra
     _heuristicMap.clear();
     _heuristicMap.resize(_problem.numAgents);
     for(int id=0; id<_problem.numAgents; id++)
     {
-        Point2 goal=_problem.goalLocs[id];
+        // Set up heuristic map for this agent
         _heuristicMap[id].resize(_problem.map.size());
         for(int i=0; i<_problem.map.size(); i++)
         {
             _heuristicMap[id][i].resize(_problem.map[i].size());
-            for(int j=0; j<_problem.map[i].size(); j++)
+        }
+
+        // Run Dijkstra
+        // Create open list and visited map
+        std::priority_queue<NodeSharedPtr,
+                            std::vector<NodeSharedPtr>,
+                            NodeComparator>
+            open_list;
+
+        std::unordered_map<int, NodeSharedPtr> visited;
+
+        NodeSharedPtr root = std::make_shared<Node>();
+        root->f = root->g = root->h = 0.0f;
+        root->pos = _problem.goalLocs[id];
+        _heuristicMap[id][root->pos.x][root->pos.y] = root->f;
+
+        open_list.push(root);
+        visited.insert({computeHash(_problem.goalLocs[id], 0), root});
+
+        int i = 0;
+        while (!open_list.empty())
+        {
+            NodeSharedPtr cur = open_list.top();
+            open_list.pop();
+            cur->isClosed = true;
+
+            // Found shortest path; update heuristic
+            _heuristicMap[id][cur->pos.x][cur->pos.y] = cur->f;
+
+            for (int dir = 0; dir < NBR_CONNECTEDNESS; dir++)
             {
-                if(_problem.map[i][j])
-                    _heuristicMap[id][i][j] = 1e30;
+                // Don't do wait
+                if(dir==4)
+                    continue;
+
+                Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
+
+                // Skip if out of bounds
+                if (nbr_pos.x >= _problem.rows || nbr_pos.y >= _problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
+                    continue;
+
+                // Skip if inside obstacle
+                if (_problem.map[nbr_pos.x][nbr_pos.y])
+                    continue;
+
+                int hash = computeHash(nbr_pos, 0);
+
+                // Check if a node already exists
+                if (visited.find(hash) != visited.end())
+                {
+                    NodeSharedPtr existing_node = visited[hash];
+
+                    // If node is in closed list we cant do better, so skip
+                    if (existing_node->isClosed)
+                        continue;
+
+                    float cur_travel_cost = cur->g + _travel_cost[dir];
+
+                    // If current path to existing node is shorter, then edit existing node
+                    if (cur_travel_cost < existing_node->g)
+                    {
+                        existing_node->g = cur_travel_cost;
+                        existing_node->f = existing_node->h + cur_travel_cost;
+                        existing_node->parent = cur;
+
+                        // We need to update the nodes position in the prio queue but
+                        // either we create a duplicate (and suffer overhead of re-expanding
+                        // node) or we heapify the current priority queue (and suffer overhead
+                        // of O(N) for elements in priority queue)
+                        open_list.push(existing_node);
+                    }
+                }
                 else
                 {
-                    _heuristicMap[id][i][j] = computeHeuristic({i,j}, goal);
+                    // Node doesn't exist so just add it
+                    NodeSharedPtr nbr_node = std::make_shared<Node>();
+                    nbr_node->pos = nbr_pos;
+                    nbr_node->g = cur->g + _travel_cost[dir];
+                    nbr_node->h = 0;
+                    nbr_node->f = nbr_node->g + nbr_node->h;
+                    nbr_node->parent = cur;
+
+                    // Add to visited
+                    visited.insert({hash, nbr_node});
+
+                    open_list.push(nbr_node);
                 }
             }
         }
@@ -214,10 +293,8 @@ void AStar::computeHeuristicMap()
 
 float AStar::computeHeuristic(const Point2 &start, const Point2 &goal)
 {
-    // Use octile distance since its an exact heuristic for 8 connected grids
-    int dx = abs(start.x - goal.x);
-    int dy = abs(start.y - goal.y);
-    return std::max(dx, dy) - std::min(dx, dy) + DIAGONAL * std::min(dx, dy);
+    // Unused
+    return 0;
 }
 
 int AStar::computeHash(const Point2 &pos, const int t)
