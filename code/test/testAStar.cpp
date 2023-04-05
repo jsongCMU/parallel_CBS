@@ -20,7 +20,7 @@ int main()
         MAPFInstance mapfProblem = loader.loadInstanceFromFile(testFile);
 
         // Create A* solver
-        AStar SAPFsolver;
+        AStar SAPFsolver(mapfProblem);
 
         // Solve Problem
         int failCount=0;
@@ -31,7 +31,7 @@ int main()
             std::vector<Constraint> constraints;
             std::vector<Point2> path;
 
-            bool succ = SAPFsolver.solve(mapfProblem, i, constraints, path);
+            bool succ = SAPFsolver.solve(i, constraints, path);
             if(!succ){
                 printf("* Failed to solve for agent %d: (%d,%d) -> (%d,%d)\n", i, mapfProblem.startLocs[i].x, mapfProblem.startLocs[i].y, mapfProblem.goalLocs[i].x, mapfProblem.goalLocs[i].y);
                 failCount++;
@@ -47,6 +47,7 @@ int main()
         // Log results for specific test file
         if(testFile == animateFile){
             saveToFile(resultFile, testFile, paths);
+            ttimer.elapsed(true);
         }
     }
     return testResult;
