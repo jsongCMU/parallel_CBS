@@ -1,6 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <filesystem>
+#include "TesterUtils.hpp"
 #include "MAPFLoader.hpp"
 #include "AStar.hpp"
 
@@ -45,29 +43,7 @@ int main()
 
         // Log results for specific test file
         if(testFile == animateFile){
-            std::ofstream resultStream;
-            resultStream.open (resultFile);
-            if(resultStream.is_open()){
-                // Give input file name
-                resultStream << testFile << "\n";
-                // Sum of costs
-                resultStream << sumOfCosts << "\n";
-                // Path of each agent per line
-                for(const auto& path: paths)
-                {
-                    for(const auto& loc: path)
-                    {
-                        resultStream << "(" << loc.x << "," << loc.y << "); ";
-                    }
-                    resultStream << "\n";
-                }
-                resultStream.close();
-                printf("Saved paths to %s\n", resultFile.c_str());
-            }
-            else
-            {
-                printf("* Could not open result file!\n");
-            }
+            saveToFile(resultFile, testFile, paths);
         }
     }
     return testResult;
