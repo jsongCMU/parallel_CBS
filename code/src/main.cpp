@@ -1,32 +1,30 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 #include "MAPFLoader.hpp"
 #include "CBSSolver.hpp"
 #include "TesterUtils.hpp"
 
-int main()
+int main(int argc, char* argv[])
 {
     // Load MAPF problem
     MAPFLoader loader;
 
     std::string resultFile = "../outputs/result.txt";
-    std::string fileName = "../instances/exp0.txt";
+    std::string fileName = argv[1];
     MAPFInstance mapfProblem = loader.loadInstanceFromFile(fileName);
 
     // Run specific version of CBS
     CBSSolver singleThreaded;
+
+    auto start = std::chrono::high_resolution_clock::now();
     std::vector<std::vector<Point2>> solution = singleThreaded.solve(mapfProblem);
+    auto end = std::chrono::high_resolution_clock::now();
 
-    for (int i = 0; i < solution.size(); i++)
-    {
-        for (int j = 0; j < solution[i].size(); j++)
-        {
-            printf("(%d,%d) ", solution[i][j].x, solution[i][j].y);
-        }
+    auto duration =  std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-        printf("\n");
-    }
+    printf("CBS took: %.3fs\n", duration.count() * 1e-6);
 
     saveToFile(resultFile, fileName, solution);
 }
