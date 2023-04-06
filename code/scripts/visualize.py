@@ -3,8 +3,10 @@ from matplotlib.patches import Circle, Rectangle
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
+from matplotlib.colors import ListedColormap
 
 Colors = ['green', 'blue', 'orange']
+STEPS_PER_MOVE = 2
 
 
 class Animation:
@@ -30,11 +32,14 @@ class Animation:
         self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=None, hspace=None)
         # self.ax.set_frame_on(False)
 
+        cmap = ListedColormap(["w", 'gray'])
+        background = np.vstack([my_map[i] for i in range(len(my_map))][::-1])
+        self.ax.matshow(background, cmap=cmap)
+
         self.patches = []
         self.artists = []
         self.agents = dict()
         self.agent_names = dict()
-        # create boundary patch
 
         x_min = -0.5
         y_min = -0.5
@@ -42,12 +47,6 @@ class Animation:
         y_max = len(self.my_map[0]) - 0.5
         plt.xlim(x_min, x_max)
         plt.ylim(y_min, y_max)
-
-        self.patches.append(Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, facecolor='none', edgecolor='gray'))
-        for i in range(len(self.my_map)):
-            for j in range(len(self.my_map[0])):
-                if self.my_map[i][j]:
-                    self.patches.append(Rectangle((i - 0.5, j - 0.5), 1, 1, facecolor='gray', edgecolor='gray'))
 
         # create agents:
         self.T = 0
@@ -69,8 +68,8 @@ class Animation:
 
         self.animation = animation.FuncAnimation(self.fig, self.animate_func,
                                                  init_func=self.init_func,
-                                                 frames=int(self.T + 1) * 10,
-                                                 interval=100,
+                                                 frames=int(self.T + 1) * STEPS_PER_MOVE + 5,
+                                                 interval=25,
                                                  blit=True)
 
     def save(self, file_name, speed):
@@ -93,7 +92,7 @@ class Animation:
 
     def animate_func(self, t):
         for k in range(len(self.paths)):
-            pos = self.get_state(t / 10, self.paths[k])
+            pos = self.get_state(t / STEPS_PER_MOVE, self.paths[k])
             self.agents[k].center = (pos[0], pos[1])
             self.agent_names[k].set_position((pos[0], pos[1] + 0.5))
 
