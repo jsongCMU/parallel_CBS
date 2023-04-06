@@ -10,7 +10,7 @@ Defines connectivity of neighbourhood
  NOTE: If you change to 4, need to change
  heuristic as well.
 */
-#define NBR_CONNECTEDNESS 9
+#define NBR_CONNECTEDNESS 5
 
 ConstraintsTable AStar::buildConstraintsTable(const std::vector<Constraint> &constraints, const int agent_id, int &maxTimestep)
 {
@@ -289,12 +289,6 @@ void AStar::computeHeuristicMap()
             }
         }
     }
-}
-
-float AStar::computeHeuristic(const Point2 &start, const Point2 &goal)
-{
-    // Unused
-    return 0;
 }
 
 int AStar::computeHash(const Point2 &pos, const int t)

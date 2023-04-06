@@ -32,7 +32,6 @@ public:
 private:
     void computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath);
     void computeHeuristicMap();
-    float computeHeuristic(const Point2& start, const Point2& goal);
     int computeHash(const Point2& pos, const int t);
     ConstraintsTable buildConstraintsTable(const std::vector<Constraint>& constraints, const int agent_id, int& maxTimestep);
     bool isConstrained(const Point2& currLoc, const Point2& nextLoc, const int nextTime, const ConstraintsTable& constraintsTable);
