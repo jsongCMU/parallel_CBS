@@ -24,7 +24,10 @@ int main(int argc, char* argv[])
 
     auto duration =  std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    printf("CBS took: %.3fs\n", duration.count() * 1e-6);
+    int SOC = 0;
+    for(const auto& path : solution)
+        SOC += path.size()-1;
+    printf("CBS took: %.3fs, SOC = %d\n", duration.count() * 1e-6, SOC);
 
     saveToFile(resultFile, fileName, solution);
 }
