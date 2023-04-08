@@ -15,7 +15,7 @@ void saveToFile(std::string resultFile, std::string mapfFile, const std::vector<
 
     int sumOfCosts = 0;
     for (int i = 0; i < paths.size(); i++)
-        sumOfCosts += paths[i].size();
+        sumOfCosts += paths[i].size()-1;
 
     if (resultStream.is_open())
     {
