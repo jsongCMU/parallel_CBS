@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "TesterUtils.hpp"
 #include "MAPFLoader.hpp"
 #include "AStar.hpp"
@@ -7,12 +8,17 @@ int main()
     std::string path = "../instances";
     std::string resultFile = "../outputs/result.txt";
     std::string animateFile = "../instances/exp0.txt";
+    std::vector<std::string> ignoreFiles = {
+            "../instances/evaluation",
+            "../instances/min-sum-of-cost.csv"
+            };
     int testResult = 0;
     TestTimer ttimer;
-    ttimer.start();
     for (const auto & entry : std::filesystem::directory_iterator(path)){
-        // Directories
+        // Skip if necessary
         std::string testFile = entry.path();
+        if(std::find(ignoreFiles.begin(), ignoreFiles.end(), testFile) != ignoreFiles.end())
+            continue;
 
         // Load MAPF problem
         MAPFLoader loader;
@@ -26,6 +32,7 @@ int main()
         int failCount=0;
         int sumOfCosts=0;
         std::vector<std::vector<Point2>> paths;
+        ttimer.start();
         for(int i = 0; i < mapfProblem.numAgents; i++)
         {
             std::vector<Constraint> constraints;
@@ -39,15 +46,15 @@ int main()
                 continue;
             }
             paths.push_back(path);
-            sumOfCosts += path.size();
+            sumOfCosts += path.size()-1;
         }
+        double elapsedTime = ttimer.elapsed();
         printf("SOC = %d\n", sumOfCosts);
-        printf("Elapsed time = %f ms\n", ttimer.elapsed(true));
+        printf("Elapsed time = %f ms\n", elapsedTime);
 
         // Log results for specific test file
         if(testFile == animateFile){
             saveToFile(resultFile, testFile, paths);
-            ttimer.elapsed(true);
         }
     }
     return testResult;
