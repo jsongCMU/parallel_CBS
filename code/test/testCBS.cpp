@@ -81,6 +81,7 @@ int main()
             "../instances/random_map.txt",
             "../instances/test_56.txt", // For now skip
     };
+    const int testAmount = 5;
     int testResult = 0;
     TestTimer ttimer;
     for (const auto & entry : std::filesystem::directory_iterator(path)){
@@ -98,9 +99,15 @@ int main()
         CBSSolver cbsSolver;
 
         // Solve Problem
-        ttimer.start();
-        std::vector<std::vector<Point2>> paths = cbsSolver.solve(mapfProblem);
-        double elapsedTime = ttimer.elapsed();
+        double elapsedTime = 0;
+        std::vector<std::vector<Point2>> paths;
+        for(int i=0; i<testAmount; i++)
+        {
+            ttimer.start();
+            paths = cbsSolver.solve(mapfProblem);
+            elapsedTime += ttimer.elapsed();
+        }
+        elapsedTime /= testAmount;
 
         // Evaluate
         int sumOfCosts=0;
@@ -127,6 +134,10 @@ int main()
             saveToFile(resultFile, testFile, paths);
         }
     }
+    if(testResult)
+        printf("* Test failed\n");
+    else
+        printf("Passed all tests!\n");
     return testResult;
 
 }
