@@ -14,7 +14,10 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
     auto start = std::chrono::high_resolution_clock::now();
 
     // Initialize low level solver
+    auto heuristicStart = std::chrono::high_resolution_clock::now();
     AStar lowLevelSolver(instance);
+    auto heuristicEnd = std::chrono::high_resolution_clock::now();
+    double heuristicTime =  std::chrono::duration_cast<std::chrono::microseconds>(heuristicEnd - heuristicStart).count();
 
     // Create priority queue
     std::priority_queue <CTNodeSharedPtr, 
@@ -57,9 +60,7 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
         {
             auto end = std::chrono::high_resolution_clock::now();
             double duration =  std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-            printf("Low level: %f percent\n", lowLevelTime*100/duration);
-            printf("Compute cost: %f percent\n", computeCostTime*100/duration);
-            printf("Detect collisions: %f percent\n", detectCollisionsTime*100/duration);
+            printf("Heur, A*, ComputeCost, DetectColls: %f, %f, %f, %f (percent)\n", heuristicTime*100/duration, lowLevelTime*100/duration, computeCostTime*100/duration, detectCollisionsTime*100/duration);
             return cur->paths;
         }
 
