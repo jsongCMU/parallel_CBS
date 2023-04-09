@@ -1,5 +1,6 @@
 #include "CBSSolver.hpp"
 #include <queue>
+#include <chrono>
 
 CBSSolver::CBSSolver()
 : numNodesGenerated(0) 
@@ -8,7 +9,9 @@ CBSSolver::CBSSolver()
 
 std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
 {
-    printf("Starting CBS Solver\n");
+    // printf("Starting CBS Solver\n");
+    
+    auto start = std::chrono::high_resolution_clock::now();
 
     // Initialize low level solver
     AStar lowLevelSolver(instance);
@@ -25,6 +28,8 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
     numNodesGenerated++;
 
     // Create paths for all agents
+    double lowLevelTime = 0;
+    auto lowLevelStart = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
         bool found = lowLevelSolver.solve(i, root->constraintList, root->paths[i]);
@@ -32,12 +37,16 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
         if (!found)
             throw NoSolutionException();
     }
+    auto lowLevelEnd = std::chrono::high_resolution_clock::now();
+    auto lowLevelDuration =  std::chrono::duration_cast<std::chrono::microseconds>(lowLevelEnd - lowLevelStart);
+    lowLevelTime += lowLevelDuration.count();
 
     root->cost = 0;
     detectCollisions(root->paths, root->collisionList);
 
     pq.push(root);
 
+    double computeCostTime=0, detectCollisionsTime=0;
     while (!pq.empty())
     {
         CTNodeSharedPtr cur = pq.top();
@@ -46,6 +55,11 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
         // If no collisions in the node then return solution
         if (cur->collisionList.size() == 0)
         {
+            auto end = std::chrono::high_resolution_clock::now();
+            double duration =  std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+            printf("Low level: %f percent\n", lowLevelTime*100/duration);
+            printf("Compute cost: %f percent\n", computeCostTime*100/duration);
+            printf("Detect collisions: %f percent\n", detectCollisionsTime*100/duration);
             return cur->paths;
         }
 
@@ -62,13 +76,24 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
 
             // Replan only for the agent that has the new constraint
             child->paths[c.agentNum].clear();
+            lowLevelStart = std::chrono::high_resolution_clock::now();
             bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
+            lowLevelEnd = std::chrono::high_resolution_clock::now();
+            lowLevelDuration =  std::chrono::duration_cast<std::chrono::microseconds>(lowLevelEnd - lowLevelStart);
+            lowLevelTime += lowLevelDuration.count();
 
             if (success)
             {
                 // Update cost and find collisions
+                auto computeCostStart = std::chrono::high_resolution_clock::now();
                 child->cost = computeCost(child->paths);
+                auto computeCostEnd = std::chrono::high_resolution_clock::now();
+                computeCostTime += std::chrono::duration_cast<std::chrono::microseconds>(computeCostEnd - computeCostStart).count();
+                
+                auto detectCollisionsStart = std::chrono::high_resolution_clock::now();
                 detectCollisions(child->paths, child->collisionList);
+                auto detectCollisionsEnd = std::chrono::high_resolution_clock::now();
+                detectCollisionsTime += std::chrono::duration_cast<std::chrono::microseconds>(detectCollisionsEnd - detectCollisionsStart).count();
 
                 // for(int i = 0; i < child->collisionList.size(); i++)
                 // {

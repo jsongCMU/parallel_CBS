@@ -128,6 +128,7 @@ int main()
             printf("SOC = %d (not tested)\n", sumOfCosts);
         }
         printf("Elapsed time = %f ms\n", elapsedTime);
+        printf("Size = %d x %d\n", mapfProblem.rows, mapfProblem.cols);
 
         // Log results for specific test file
         if(testFile == animateFile){
