@@ -3,6 +3,9 @@
 #include <cstdio>
 #include <unordered_map>
 #include <algorithm>
+#include <omp.h>
+
+#define MAXTHREADS (2)
 
 /*
 Defines connectivity of neighbourhood
@@ -87,6 +90,8 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
 
     std::unordered_map<int, NodeSharedPtr> visited;
 
+    NodeSharedPtr curArray[MAXTHREADS];
+
     NodeSharedPtr root = std::make_shared<Node>();
     root->f = root->g = root->h = 0.0f;
     root->t = 0;
@@ -94,81 +99,107 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
 
     open_list.push(root);
     visited.insert({computeHash(start, root->t), root});
-
     while (!open_list.empty())
     {
-        NodeSharedPtr cur = open_list.top();
-        open_list.pop();
-
-        if (cur->pos == goal && cur->t >= maxTimestep)
+        // Check termination condition
+        if (open_list.top()->pos == goal && open_list.top()->t >= maxTimestep)
         {
-            computePath(cur, outputPath);
+            computePath(open_list.top(), outputPath);
             return true;
         }
 
-        cur->isClosed = true;
-
-        for (int dir = 0; dir < NBR_CONNECTEDNESS; dir++)
+        // Load input to parallel operation
+        int numItem = 0;
+        while(!open_list.empty())
         {
-            Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
+            // Keep popping then adding to curArray until one of the following is true:
+            // 1. open list is empty
+            // 2. Max number of elements is reached
+            // 3. Node at goal satisfying all constraints; all nodes further down list will only be worse
+            if(numItem >= MAXTHREADS)
+                break;
+            NodeSharedPtr cur = open_list.top();
+            if (cur->pos == goal && cur->t >= maxTimestep)
+                break;
+            curArray[numItem++] = cur;
+            open_list.pop();
+        }
 
-            // Skip if out of bounds
-            if (nbr_pos.x >= _problem.rows || nbr_pos.y >= _problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
-                continue;
-
-            // Skip if inside obstacle
-            if (_problem.map[nbr_pos.x][nbr_pos.y])
-                continue;
-
-            // Skip if violates constraints table
-            if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
-                continue;
-
-            int hash = computeHash(nbr_pos, cur->t + 1);
-
-            // Check if a node already exists
-            if (visited.find(hash) != visited.end())
+        #pragma omp parallel for
+        for(int i=0; i<numItem; i++)
+        {
+            #pragma omp critical
             {
-                NodeSharedPtr existing_node = visited[hash];
+                NodeSharedPtr cur = curArray[i];
 
-                // If node is in closed list we cant do better, so skip
-                if (existing_node->isClosed)
-                    continue;
+                // Only first (optimal) thread can close nodes; others cannot
+                if(i==0)
+                    cur->isClosed = true;
 
-                float cur_travel_cost = cur->g + _travel_cost[dir];
-
-                // If current path to existing node is shorter, then edit existing node
-                if (cur_travel_cost < existing_node->g)
+                for (int dir = 0; dir < NBR_CONNECTEDNESS; dir++)
                 {
-                    existing_node->g = cur_travel_cost;
-                    existing_node->f = existing_node->h + cur_travel_cost;
-                    existing_node->parent = cur;
-                    existing_node->t = cur->t + 1;
+                    Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
 
-                    // We need to update the nodes position in the prio queue but
-                    // either we create a duplicate (and suffer overhead of re-expanding
-                    // node) or we heapify the current priority queue (and suffer overhead
-                    // of O(N) for elements in priority queue)
-                    open_list.push(existing_node);
+                    // Skip if out of bounds
+                    if (nbr_pos.x >= _problem.rows || nbr_pos.y >= _problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
+                        continue;
+
+                    // Skip if inside obstacle
+                    if (_problem.map[nbr_pos.x][nbr_pos.y])
+                        continue;
+
+                    // Skip if violates constraints table
+                    if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
+                        continue;
+
+                    int hash = computeHash(nbr_pos, cur->t + 1);
+
+                    // Check if a node already exists
+                    if (visited.find(hash) != visited.end())
+                    {
+                        NodeSharedPtr existing_node = visited[hash];
+
+                        // If node is in closed list we cant do better, so skip
+                        if (existing_node->isClosed)
+                            continue;
+
+                        float cur_travel_cost = cur->g + _travel_cost[dir];
+
+                        // If current path to existing node is shorter, then edit existing node
+                        if (cur_travel_cost < existing_node->g)
+                        {
+                            existing_node->g = cur_travel_cost;
+                            existing_node->f = existing_node->h + cur_travel_cost;
+                            existing_node->parent = cur;
+                            existing_node->t = cur->t + 1;
+
+                            // We need to update the nodes position in the prio queue but
+                            // either we create a duplicate (and suffer overhead of re-expanding
+                            // node) or we heapify the current priority queue (and suffer overhead
+                            // of O(N) for elements in priority queue)
+                            open_list.push(existing_node);
+                        }
+                    }
+                    else
+                    {
+                        // Node doesn't exist so just add it
+                        NodeSharedPtr nbr_node = std::make_shared<Node>();
+                        nbr_node->pos = nbr_pos;
+                        nbr_node->g = cur->g + _travel_cost[dir];
+                        nbr_node->h = _heuristicMap[agent_id][nbr_pos.x][nbr_pos.y];
+                        nbr_node->f = nbr_node->g + nbr_node->h;
+                        nbr_node->t = cur->t + 1;
+                        nbr_node->parent = cur;
+
+                        // Add to visited
+                        visited.insert({hash, nbr_node});
+
+                        open_list.push(nbr_node);
+                    }
                 }
             }
-            else
-            {
-                // Node doesn't exist so just add it
-                NodeSharedPtr nbr_node = std::make_shared<Node>();
-                nbr_node->pos = nbr_pos;
-                nbr_node->g = cur->g + _travel_cost[dir];
-                nbr_node->h = _heuristicMap[agent_id][nbr_pos.x][nbr_pos.y];
-                nbr_node->f = nbr_node->g + nbr_node->h;
-                nbr_node->t = cur->t + 1;
-                nbr_node->parent = cur;
-
-                // Add to visited
-                visited.insert({hash, nbr_node});
-
-                open_list.push(nbr_node);
-            }
         }
+
     }
 
     return false;
@@ -192,6 +223,7 @@ void AStar::computeHeuristicMap()
     // For each agent, compute heuristic using Dijkstra
     _heuristicMap.clear();
     _heuristicMap.resize(_problem.numAgents);
+    #pragma omp parallel for
     for(int id=0; id<_problem.numAgents; id++)
     {
         // Set up heuristic map for this agent
