@@ -1,5 +1,8 @@
-#include "CBSSolver.hpp"
 #include <queue>
+#include <omp.h>
+#include "CBSSolver.hpp"
+
+#define MAXTHREADS 2
 
 CBSSolver::CBSSolver()
 : numNodesGenerated(0) 
@@ -40,44 +43,62 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
 
     while (!pq.empty())
     {
-        CTNodeSharedPtr cur = pq.top();
-        pq.pop();
-
-        // If no collisions in the node then return solution
-        if (cur->collisionList.size() == 0)
+        // Check if best is acceptable
+        if (pq.top()->collisionList.size() == 0)
         {
-            return cur->paths;
+            return pq.top()->paths;
         }
 
-        // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
-        for (Constraint &c : resolveCollision(cur->collisionList[0]))
+        #pragma omp parallel
         {
-            // Add new constraint
-            CTNodeSharedPtr child = std::make_shared<CTNode>();
-            child->constraintList = cur->constraintList;
-            child->constraintList.push_back(c);
-            child->paths = cur->paths;
+            // Determine number of items to operate on in parallel
+            int numItem = (pq.size() < MAXTHREADS) ? pq.size() : MAXTHREADS;
 
-            // printf("New cons = %d (%d,%d) %d @ %d\n", c.agentNum, c.location.first.x, c.location.first.y, c.isVertexConstraint, c.t);
-
-            // Replan only for the agent that has the new constraint
-            child->paths[c.agentNum].clear();
-            bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
-
-            if (success)
+            #pragma omp for
+            for(int i=0; i<numItem; i++)
             {
-                // Update cost and find collisions
-                child->cost = computeCost(child->paths);
-                detectCollisions(child->paths, child->collisionList);
+                // For now make it single threaded
+                #pragma omp critical
+                {
+                    CTNodeSharedPtr cur = pq.top();
 
-                // for(int i = 0; i < child->collisionList.size(); i++)
-                // {
-                //     Collision c = child->collisionList[i];
-                //     printf("\tCollision = %d|%d (%d,%d) @ %d (%d)\n", c.agent1, c.agent2, c.location.first.x, c.location.first.y, c.t, c.isVertexCollision);
-                // }
+                    // Only create constraints for nodes with collisions
+                    if (cur->collisionList.size() != 0)
+                    {
+                        pq.pop();
+                        // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
+                        for (Constraint &c : resolveCollision(cur->collisionList[0]))
+                        {
+                            // Add new constraint
+                            CTNodeSharedPtr child = std::make_shared<CTNode>();
+                            child->constraintList = cur->constraintList;
+                            child->constraintList.push_back(c);
+                            child->paths = cur->paths;
 
-                // Add to search queue
-                pq.push(child);
+                            // printf("New cons = %d (%d,%d) %d @ %d\n", c.agentNum, c.location.first.x, c.location.first.y, c.isVertexConstraint, c.t);
+
+                            // Replan only for the agent that has the new constraint
+                            child->paths[c.agentNum].clear();
+                            bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
+
+                            if (success)
+                            {
+                                // Update cost and find collisions
+                                child->cost = computeCost(child->paths);
+                                detectCollisions(child->paths, child->collisionList);
+
+                                // for(int i = 0; i < child->collisionList.size(); i++)
+                                // {
+                                //     Collision c = child->collisionList[i];
+                                //     printf("\tCollision = %d|%d (%d,%d) @ %d (%d)\n", c.agent1, c.agent2, c.location.first.x, c.location.first.y, c.t, c.isVertexCollision);
+                                // }
+
+                                // Add to search queue
+                                pq.push(child);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
