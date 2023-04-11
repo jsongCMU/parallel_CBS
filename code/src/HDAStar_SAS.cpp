@@ -15,10 +15,12 @@ Defines connectivity of neighbourhood
 
 HDAStar::HDAStar(const MAPFInstance& mapfInstance) : AStar(mapfInstance)
 {
-
 }
 
+// Return which processor should get this node
 int HDAStar::computeDistribution(const Point2& pos)
 {
-    return 0;
+    // Stupid simple for now; refine later
+    int nodeNum = pos.x*_problem.cols + pos.y;
+    return nodeNum % NUMPROCS;
 }
