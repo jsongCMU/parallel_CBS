@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <omp.h>
 
-#define MAXTHREADS (2)
+#define MAXTHREADS (4)
 
 /*
 Defines connectivity of neighbourhood
@@ -128,56 +128,56 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
         #pragma omp parallel for
         for(int i=0; i<numItem; i++)
         {
-            #pragma omp critical
+            NodeSharedPtr cur = curArray[i];
+
+            // Only first (optimal) thread can close nodes; others cannot
+            if(i==0)
+                cur->isClosed = true;
+
+            for (int dir = 0; dir < NBR_CONNECTEDNESS; dir++)
             {
-                NodeSharedPtr cur = curArray[i];
+                Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
 
-                // Only first (optimal) thread can close nodes; others cannot
-                if(i==0)
-                    cur->isClosed = true;
+                // Skip if out of bounds
+                if (nbr_pos.x >= _problem.rows || nbr_pos.y >= _problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
+                    continue;
 
-                for (int dir = 0; dir < NBR_CONNECTEDNESS; dir++)
+                // Skip if inside obstacle
+                if (_problem.map[nbr_pos.x][nbr_pos.y])
+                    continue;
+
+                // Skip if violates constraints table
+                if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
+                    continue;
+
+                int hash = computeHash(nbr_pos, cur->t + 1);
+
+                // Check if a node already exists
+                #pragma omp critical
                 {
-                    Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
-
-                    // Skip if out of bounds
-                    if (nbr_pos.x >= _problem.rows || nbr_pos.y >= _problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
-                        continue;
-
-                    // Skip if inside obstacle
-                    if (_problem.map[nbr_pos.x][nbr_pos.y])
-                        continue;
-
-                    // Skip if violates constraints table
-                    if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
-                        continue;
-
-                    int hash = computeHash(nbr_pos, cur->t + 1);
-
-                    // Check if a node already exists
                     if (visited.find(hash) != visited.end())
                     {
                         NodeSharedPtr existing_node = visited[hash];
 
-                        // If node is in closed list we cant do better, so skip
-                        if (existing_node->isClosed)
-                            continue;
-
-                        float cur_travel_cost = cur->g + _travel_cost[dir];
-
-                        // If current path to existing node is shorter, then edit existing node
-                        if (cur_travel_cost < existing_node->g)
+                        // Only care about nodes that aren't closed
+                        if (!existing_node->isClosed)
                         {
-                            existing_node->g = cur_travel_cost;
-                            existing_node->f = existing_node->h + cur_travel_cost;
-                            existing_node->parent = cur;
-                            existing_node->t = cur->t + 1;
+                            float cur_travel_cost = cur->g + _travel_cost[dir];
 
-                            // We need to update the nodes position in the prio queue but
-                            // either we create a duplicate (and suffer overhead of re-expanding
-                            // node) or we heapify the current priority queue (and suffer overhead
-                            // of O(N) for elements in priority queue)
-                            open_list.push(existing_node);
+                            // If current path to existing node is shorter, then edit existing node
+                            if (cur_travel_cost < existing_node->g)
+                            {
+                                existing_node->g = cur_travel_cost;
+                                existing_node->f = existing_node->h + cur_travel_cost;
+                                existing_node->parent = cur;
+                                existing_node->t = cur->t + 1;
+
+                                // We need to update the nodes position in the prio queue but
+                                // either we create a duplicate (and suffer overhead of re-expanding
+                                // node) or we heapify the current priority queue (and suffer overhead
+                                // of O(N) for elements in priority queue)
+                                open_list.push(existing_node);
+                            }
                         }
                     }
                     else
