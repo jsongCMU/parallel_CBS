@@ -29,7 +29,7 @@ class AStar
 public:
     AStar(const MAPFInstance& mapfInstance) : _problem(mapfInstance){computeHeuristicMap();};
     bool solve(const int agent_id, const std::vector<Constraint>& constraints, std::vector<Point2> &outputPath);
-private:
+protected:
     void computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath);
     void computeHeuristicMap();
     int computeHash(const Point2& pos, const int t);

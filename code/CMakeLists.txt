@@ -14,6 +14,7 @@ add_executable(parallelCBS src/main.cpp src/MAPFLoader.cpp src/CBSSolver.cpp src
 add_executable(TestAStar test/testAStar.cpp src/AStar.cpp src/MAPFLoader.cpp)
 add_executable(TestMAPFLoader test/testMAPFLoader.cpp src/MAPFLoader.cpp)
 add_executable(TestCBS test/testCBS.cpp src/MAPFLoader.cpp src/CBSSolver.cpp src/AStar.cpp)
+add_executable(TestHDAStar test/testHDAStar.cpp src/HDAStar_SAS.cpp src/AStar.cpp src/MAPFLoader.cpp)
 
 add_test(NAME TestMAPFLoader
         COMMAND TestMAPFLoader)
