@@ -293,6 +293,11 @@ void AStar::computeHeuristicMap()
 
 int AStar::computeHash(const Point2 &pos, const int t)
 {
-    // Only works for maps with a height less than 100000
+    // Only works for maps with a height less than 1000
     return (pos.x * 1000 + pos.y) * 1000 + t;
+}
+
+int AStar::computeHash(const Point2 &pos)
+{
+    return computeHash(pos, 0);
 }

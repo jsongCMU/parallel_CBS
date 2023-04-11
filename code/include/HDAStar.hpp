@@ -30,8 +30,9 @@ class HDAStar : public AStar
 {
 public:
     HDAStar(const MAPFInstance& mapfInstance);
+    bool solve(const int agent_id, const std::vector<Constraint> &constraints, std::vector<Point2> &outputPath);
 private:
-    int computeDistribution(const Point2& pos);
+    int computeDestination(const Point2& pos);
 };
 
 #endif
