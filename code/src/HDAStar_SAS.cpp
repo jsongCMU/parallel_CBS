@@ -62,6 +62,9 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     // Push to an open list
     openLists[computeDestination(root->pos)].push(root);
 
+    // Possibly suboptimal path found; -1 if none found yet
+    float foundPathG = -1;
+
     while (true)
     {
         // Flush buffer and update open lists
@@ -102,8 +105,6 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
         }
         if(allFinished)
         {
-            // TODO: Use maxTimestep
-            // TODO: Handle goal not in visisted
             int hash = computeHash(goal);
             if (visited.find(hash) != visited.end())
             {
@@ -129,7 +130,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
             LNodeSharedPtr cur = openLists[pid].top();
             openLists[pid].pop();
             // Put current node in visisted
-            int hash = computeHash(cur->pos);
+            int hash = computeHash(cur->pos, cur->t);
             if (visited.find(hash) != visited.end())
             {
                 LNodeSharedPtr existing_node = visited[hash];
@@ -150,6 +151,16 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 visited.insert({hash, cur});
             }
 
+            // If legitimate path found (which may be suboptimal), set/update ceiling
+            // All current/neighbor nodes with f value >= ceiling are worse, so ignore
+            if(cur->pos == goal && cur->t >= maxTimestep)
+            {
+                if((foundPathG < 0) || (cur->g < foundPathG))
+                {
+                    foundPathG = cur->g;
+                }
+            }
+
             // Generate children
             for (int dir = 0; dir < NBR_CONNECTEDNESS; dir++)
             {
@@ -167,14 +178,20 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
                     continue;
 
+                // Skip if node cannot beat ceiling
+                float nbr_h = _heuristicMap[agent_id][nbr_pos.x][nbr_pos.y];
+                float nbr_f = cur->g + _travel_cost[dir] + nbr_h;
+                if((foundPathG > 0) && (nbr_f >= foundPathG))
+                    continue;
+
                 // TODO: Skip if child are worse than what's in closed set?
 
                 // Create child
                 LNodeSharedPtr nbr_node = std::make_shared<LockedNode>();
                 nbr_node->pos = nbr_pos;
                 nbr_node->g = cur->g + _travel_cost[dir];
-                nbr_node->h = _heuristicMap[agent_id][nbr_pos.x][nbr_pos.y];
-                nbr_node->f = nbr_node->g + nbr_node->h;
+                nbr_node->h = nbr_h;
+                nbr_node->f = nbr_f;
                 nbr_node->t = cur->t + 1;
                 nbr_node->parent = cur;
 
