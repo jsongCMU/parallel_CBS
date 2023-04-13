@@ -121,7 +121,7 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
                 continue;
 
             // Skip if violates constraints table
-            if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
+            if (cur->t + 1 <= maxTimestep && isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
                 continue;
 
             int hash = computeHash(nbr_pos, cur->t + 1);
@@ -192,11 +192,11 @@ void AStar::computeHeuristicMap()
     // For each agent, compute heuristic using Dijkstra
     _heuristicMap.clear();
     _heuristicMap.resize(_problem.numAgents);
-    for(int id=0; id<_problem.numAgents; id++)
+    for (int id = 0; id < _problem.numAgents; id++)
     {
         // Set up heuristic map for this agent
         _heuristicMap[id].resize(_problem.map.size());
-        for(int i=0; i<_problem.map.size(); i++)
+        for (int i = 0; i < _problem.map.size(); i++)
         {
             _heuristicMap[id][i].resize(_problem.map[i].size());
         }
@@ -231,7 +231,7 @@ void AStar::computeHeuristicMap()
             for (int dir = 0; dir < NBR_CONNECTEDNESS; dir++)
             {
                 // Don't do wait
-                if(dir==4)
+                if (dir == 4)
                     continue;
 
                 Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
@@ -293,6 +293,6 @@ void AStar::computeHeuristicMap()
 
 int AStar::computeHash(const Point2 &pos, const int t)
 {
-    // Only works for maps with a height less than 100000
+    // Only works for maps with a width/height less than 100000
     return (pos.x * 1000 + pos.y) * 1000 + t;
 }

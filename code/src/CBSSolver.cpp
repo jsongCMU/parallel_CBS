@@ -5,7 +5,7 @@
 #define MAXTHREADS 8
 
 CBSSolver::CBSSolver()
-: numNodesGenerated(0) 
+: numNodesGenerated(0)
 {
 }
 
@@ -26,8 +26,7 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
 
     CTNodeSharedPtr root = std::make_shared<CTNode>();
     root->paths.resize(instance.numAgents);
-    root->id = 0;
-    numNodesGenerated++;
+    root->id = numNodesGenerated++;
 
     // Create paths for all agents
     for (int i = 0; i < instance.startLocs.size(); i++)
@@ -83,8 +82,6 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
                     child->constraintList.push_back(c);
                     child->paths = cur->paths;
 
-                    // printf("New cons = %d (%d,%d) %d @ %d\n", c.agentNum, c.location.first.x, c.location.first.y, c.isVertexConstraint, c.t);
-
                     // Replan only for the agent that has the new constraint
                     child->paths[c.agentNum].clear();
                     bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
@@ -94,12 +91,9 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
                         // Update cost and find collisions
                         child->cost = computeCost(child->paths);
                         detectCollisions(child->paths, child->collisionList);
-
-                        // for(int i = 0; i < child->collisionList.size(); i++)
-                        // {
-                        //     Collision c = child->collisionList[i];
-                        //     printf("\tCollision = %d|%d (%d,%d) @ %d (%d)\n", c.agent1, c.agent2, c.location.first.x, c.location.first.y, c.t, c.isVertexCollision);
-                        // }
+                        
+                        // Set id
+                        child->id = numNodesGenerated++;
 
                         // Add to search queue
                         #pragma omp critical
@@ -121,7 +115,7 @@ int inline CBSSolver::computeCost(const std::vector<std::vector<Point2>> &paths)
 
     for (int i = 0; i < paths.size(); i++)
     {
-        result += paths[i].size();
+        result += paths[i].size() - 1;
     }
 
     return result;
