@@ -49,6 +49,9 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     // Create buffers to reduce contention
     // Each processor needs N-1 buffers; have 1 dummy buffer to make it N
     LNodeBuffer openListsBuffer[NUMPROCS][NUMPROCS];
+    for(int i=0; i<NUMPROCS; i++)
+        for(int j=0; j<NUMPROCS; j++)
+            omp_init_lock(&openListsBuffer[i][j].lock);
 
     // Create flags
     bool finished[NUMPROCS];
@@ -81,10 +84,10 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 }
                 LNodeBuffer &curBuffer = openListsBuffer[dstID][srcID];
                 // Claim, copy, clear, release buffer
-                // omp_set_lock(&curBuffer.lock); // TODO: initialize all locks
+                omp_set_lock(&curBuffer.lock);
                 std::vector<LNodeSharedPtr> curNodes = curBuffer.buffer;
                 curBuffer.buffer.clear();
-                // omp_unset_lock(&curBuffer.lock);
+                omp_unset_lock(&curBuffer.lock);
 
                 // Push to open list
                 for(const auto& node : curNodes)
@@ -147,7 +150,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
             {
                 LNodeSharedPtr existing_node = visited[hash];
                 // Claim, compare, update (if better), release node
-                // omp_set_lock(&existing_node.lock); // TODO: initialize all locks
+                omp_set_lock(&existing_node->lock);
                 if (cur->g < existing_node->g)
                 {
                     existing_node->g = cur->g;
@@ -155,7 +158,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     existing_node->t = cur->t;
                     existing_node->parent = cur->parent;
                 }
-                // omp_unset_lock(&existing_node.lock); // TODO: initialize all locks
+                omp_unset_lock(&existing_node->lock);
             }
             else
             {
@@ -191,7 +194,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
                     continue;
 
-                // TODO: Skip if child are worse than what's in closed set?
+                // TODO: Skip if child are worse than what's in visited set? Increases contention for visited set; may be bad idea
 
                 // Create child
                 LNodeSharedPtr nbr_node = std::make_shared<LockedNode>();
@@ -201,6 +204,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 nbr_node->f = nbr_node->g + nbr_node->h;
                 nbr_node->t = cur->t + 1;
                 nbr_node->parent = cur;
+                omp_init_lock(&nbr_node->lock);
 
                 // Distribute child
                 int destination = computeDestination(nbr_pos);
@@ -213,9 +217,9 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 {
                     // Claim, push to, release buffer
                     LNodeBuffer &curBuffer = openListsBuffer[destination][pid];
-                    // omp_set_lock(&curBuffer.lock); // TODO: initialize all locks
+                    omp_set_lock(&curBuffer.lock);
                     curBuffer.buffer.push_back(nbr_node);
-                    // omp_unset_lock(&curBuffer.lock);
+                    omp_unset_lock(&curBuffer.lock);
                 }
             }
         }
