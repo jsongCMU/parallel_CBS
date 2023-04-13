@@ -156,14 +156,14 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
             // Put current node in visisted
             int hash = computeHash(cur->pos, cur->t);
 
-
+            // Cannot do find() and insert() simultaneously, so lock
             omp_set_lock(&visitedLock);
-            auto x = visited.find(hash);
+            std::unordered_map<int, LNodeSharedPtr>::iterator target = visited.find(hash);
             omp_unset_lock(&visitedLock);
 
-            if (x != visited.end())
+            if (target != visited.end())
             {
-                LNodeSharedPtr existing_node = x->second;
+                LNodeSharedPtr existing_node = target->second;
                 // Claim, compare, update (if better), release node
                 omp_set_lock(&existing_node->lock);
                 if (cur->g < existing_node->g)
