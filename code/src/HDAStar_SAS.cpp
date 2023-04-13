@@ -132,7 +132,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
 
         // Start evaluation
-        // #pragma omp parallel for // TODO: Fix segfault
+        #pragma omp parallel for // TODO: Fix segfault
         for(int pid=0; pid<NUMPROCS; pid++)
         {
             // Only run if not finished
@@ -155,9 +155,15 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
             // Put current node in visisted
             int hash = computeHash(cur->pos, cur->t);
-            if (visited.find(hash) != visited.end())
+
+
+            omp_set_lock(&visitedLock);
+            auto x = visited.find(hash);
+            omp_unset_lock(&visitedLock);
+
+            if (x != visited.end())
             {
-                LNodeSharedPtr existing_node = visited[hash];
+                LNodeSharedPtr existing_node = x->second;
                 // Claim, compare, update (if better), release node
                 omp_set_lock(&existing_node->lock);
                 if (cur->g < existing_node->g)
