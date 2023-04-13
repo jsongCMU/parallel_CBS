@@ -45,6 +45,9 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                         NodeComparator>
         openLists[NUMPROCS];
     std::unordered_map<int, LNodeSharedPtr> visited;
+    omp_lock_t visitedLock;
+    omp_init_lock(&visitedLock);
+
 
     // Create buffers to reduce contention
     // Each processor needs N-1 buffers; have 1 dummy buffer to make it N
@@ -61,6 +64,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     root->f = root->g = root->h = 0.0f;
     root->t = 0;
     root->pos = start;
+    omp_init_lock(&root->lock);
 
     // Push to an open list
     openLists[computeDestination(root->pos)].push(root);
@@ -72,6 +76,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     while (true)
     {
         // Flush buffer and update open lists
+        #pragma omp parallel for
         for(int dstID=0; dstID<NUMPROCS; dstID++)
         {
             for(int srcID=0; srcID<NUMPROCS; srcID++)
@@ -96,6 +101,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
         }
 
         // Check if open list is empty
+        #pragma omp parallel for
         for(int pid=0; pid<NUMPROCS; pid++)
         {
             finished[pid] = openLists[pid].empty();
@@ -103,10 +109,12 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
         // Check if all complete
         bool allFinished = true;
+        #pragma omp parallel for reduction(&:allFinished)
         for(int pid=0; pid<NUMPROCS; pid++)
         {
-            allFinished = allFinished && finished[pid];
+            allFinished &= finished[pid];
         }
+
         if(allFinished)
         {
             int hash = computeHash(goal, foundPathT);
@@ -124,6 +132,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
 
         // Start evaluation
+        // #pragma omp parallel for // TODO: Fix segfault
         for(int pid=0; pid<NUMPROCS; pid++)
         {
             // Only run if not finished
@@ -163,7 +172,9 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
             else
             {
                 // Node doesn't exist so just add it
+                omp_set_lock(&visitedLock);
                 visited.insert({hash, cur});
+                omp_unset_lock(&visitedLock);
             }
 
             // If legitimate path found (which may be suboptimal), set/update ceiling
