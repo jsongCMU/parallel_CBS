@@ -6,6 +6,7 @@
 #include "MAPFInstance.hpp"
 #include "SolverUtils.hpp"
 #include "AStar.hpp"
+#include "HDAStar.hpp"
 
 class CBSSolver
 {
