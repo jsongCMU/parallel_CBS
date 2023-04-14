@@ -5,6 +5,7 @@ from pathlib import Path
 from visualize import Animation
 import numpy as np
 
+
 def import_map(filename):
     f = Path(filename)
     if not f.is_file():
@@ -28,14 +29,24 @@ def import_map(filename):
     f.close()
     return my_map
 
+
+def in_occ_space(map, x, y):
+    up = max(y-1, 0)
+    down = min(y+1, len(map) - 1)
+    left = max(x-1, 0)
+    right = min(x+1, len(map) - 1)
+
+    return map[x][up] or map[x][down] or map[left][y] or map[right][y]
+
+
 def get_free_location(map, locations):
-    x, y = np.random.randint(0, len(map), size=2)
+    x, y = np.random.randint(0, len(map) - 1, size=2)
 
     # Keep regenerating until a free point is found
-    while map[x][y] or (x,y) in locations: 
+    while in_occ_space(map, x, y) or (x, y) in locations:
         x, y = np.random.randint(0, len(map), size=2)
 
-    return x,y
+    return x, y
 
 
 def create_random_start_goal(map, num_agents):
@@ -48,23 +59,23 @@ def create_random_start_goal(map, num_agents):
     # Generate unique start locations
     for _ in range(num_agents):
         x, y = get_free_location(map, locations)
-        locations.add((x,y))
+        locations.add((x, y))
 
         starts.append((x, y))
 
-    
     # Generate unique start locations
     for _ in range(num_agents):
         x, y = get_free_location(map, locations)
-        locations.add((x,y))
+        locations.add((x, y))
 
         goals.append((x, y))
 
     return starts, goals
 
+
 def save_new_mapf_instance(filename, map, starts, goals):
     f = Path(filename)
-    
+
     f = open(filename, 'w')
     rows = len(map)
     cols = len(map[0])
@@ -78,7 +89,7 @@ def save_new_mapf_instance(filename, map, starts, goals):
                 cur_row += "@"
             else:
                 cur_row += "."
-        
+
         cur_row += "\n"
         f.write(cur_row)
 
@@ -93,7 +104,8 @@ def save_new_mapf_instance(filename, map, starts, goals):
 if __name__ == '__main__':
     # Get arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--map', type=str, default='../instances/evaluation/evaluation_map.txt')
+    parser.add_argument('--map', type=str,
+                        default='../instances/evaluation/evaluation_map.txt')
     parser.add_argument('--num_agents', type=int, default=20)
     parser.add_argument('--num_instances', type=int, default=1)
     args = parser.parse_args()
@@ -101,9 +113,9 @@ if __name__ == '__main__':
     print("*** Load map ***")
     map = import_map(args.map)
 
-
     for i in range(args.num_instances):
         print("*** Create random start + goal locations ***")
         starts, goals = create_random_start_goal(map, args.num_agents)
 
-        save_new_mapf_instance(f'../instances/evaluation/eval{i}.txt', map, starts, goals)
+        save_new_mapf_instance(
+            f'../instances/evaluation/eval_n{args.num_agents}_i{i}.txt', map, starts, goals)
