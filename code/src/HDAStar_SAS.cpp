@@ -44,10 +44,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                         std::vector<LNodeSharedPtr>,
                         NodeComparator>
         openLists[NUMPROCS];
-    std::unordered_map<int, LNodeSharedPtr> visited;
-    omp_lock_t visitedLock;
-    omp_init_lock(&visitedLock);
-
+    std::unordered_map<int, LNodeSharedPtr> visited[NUMPROCS];
 
     // Create buffers to reduce contention
     // Each processor needs N-1 buffers; have 1 dummy buffer to make it N
@@ -64,7 +61,6 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     root->f = root->g = root->h = 0.0f;
     root->t = 0;
     root->pos = start;
-    omp_init_lock(&root->lock);
 
     // Push to an open list
     openLists[computeDestination(root->pos)].push(root);
@@ -118,9 +114,10 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
         if(allFinished)
         {
             int hash = computeHash(goal, foundPathT);
-            if (visited.find(hash) != visited.end())
+            int goalPid = computeDestination(goal);
+            if (visited[goalPid].find(hash) != visited[goalPid].end())
             {
-                computePath(visited[hash], outputPath);
+                computePath(visited[goalPid][hash], outputPath);
                 return true;
             }
             else
@@ -132,7 +129,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
 
         // Start evaluation
-        #pragma omp parallel for // TODO: Fix segfault
+        #pragma omp parallel for
         for(int pid=0; pid<NUMPROCS; pid++)
         {
             // Only run if not finished
@@ -153,19 +150,13 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 continue;
             }
 
-            // Put current node in visisted
+            // Update/put current node in visisted
             int hash = computeHash(cur->pos, cur->t);
-
-            // Cannot do find() and insert() simultaneously, so lock
-            omp_set_lock(&visitedLock);
-            std::unordered_map<int, LNodeSharedPtr>::iterator target = visited.find(hash);
-            omp_unset_lock(&visitedLock);
-
-            if (target != visited.end())
+            std::unordered_map<int, LNodeSharedPtr>::iterator target = visited[pid].find(hash);
+            if (target != visited[pid].end())
             {
                 LNodeSharedPtr existing_node = target->second;
                 // Claim, compare, update (if better), release node
-                omp_set_lock(&existing_node->lock);
                 if (cur->g < existing_node->g)
                 {
                     existing_node->g = cur->g;
@@ -173,14 +164,11 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     existing_node->t = cur->t;
                     existing_node->parent = cur->parent;
                 }
-                omp_unset_lock(&existing_node->lock);
             }
             else
             {
                 // Node doesn't exist so just add it
-                omp_set_lock(&visitedLock);
-                visited.insert({hash, cur});
-                omp_unset_lock(&visitedLock);
+                visited[pid].insert({hash, cur});
             }
 
             // If legitimate path found (which may be suboptimal), set/update ceiling
@@ -211,8 +199,6 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
                     continue;
 
-                // TODO: Skip if child are worse than what's in visited set? Increases contention for visited set; may be bad idea
-
                 // Create child
                 LNodeSharedPtr nbr_node = std::make_shared<LockedNode>();
                 nbr_node->pos = nbr_pos;
@@ -221,7 +207,6 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 nbr_node->f = nbr_node->g + nbr_node->h;
                 nbr_node->t = cur->t + 1;
                 nbr_node->parent = cur;
-                omp_init_lock(&nbr_node->lock);
 
                 // Distribute child
                 int destination = computeDestination(nbr_pos);
