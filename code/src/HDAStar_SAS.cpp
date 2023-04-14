@@ -40,15 +40,15 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
     // Create open lists and visited map
     // Each processor gets its own open list; all processors share visited
-    std::priority_queue<LNodeSharedPtr,
-                        std::vector<LNodeSharedPtr>,
+    std::priority_queue<NodeSharedPtr,
+                        std::vector<NodeSharedPtr>,
                         NodeComparator>
         openLists[NUMPROCS];
-    std::unordered_map<int, LNodeSharedPtr> visited[NUMPROCS];
+    std::unordered_map<int, NodeSharedPtr> visited[NUMPROCS];
 
     // Create buffers to reduce contention
     // Each processor needs N-1 buffers; have 1 dummy buffer to make it N
-    LNodeBuffer openListsBuffer[NUMPROCS][NUMPROCS];
+    NodeBuffer openListsBuffer[NUMPROCS][NUMPROCS];
     for(int i=0; i<NUMPROCS; i++)
         for(int j=0; j<NUMPROCS; j++)
             omp_init_lock(&openListsBuffer[i][j].lock);
@@ -57,7 +57,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     bool finished[NUMPROCS];
 
     // Create root node
-    LNodeSharedPtr root = std::make_shared<LockedNode>();
+    NodeSharedPtr root = std::make_shared<Node>();
     root->f = root->g = root->h = 0.0f;
     root->t = 0;
     root->pos = start;
@@ -83,10 +83,10 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     // Ignore dummy buffer
                     continue;
                 }
-                LNodeBuffer &curBuffer = openListsBuffer[dstID][srcID];
+                NodeBuffer &curBuffer = openListsBuffer[dstID][srcID];
                 // Claim, copy, clear, release buffer
                 omp_set_lock(&curBuffer.lock);
-                std::vector<LNodeSharedPtr> curNodes = curBuffer.buffer;
+                std::vector<NodeSharedPtr> curNodes = curBuffer.buffer;
                 curBuffer.buffer.clear();
                 omp_unset_lock(&curBuffer.lock);
 
@@ -137,7 +137,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 continue;
 
             // Grab current node
-            LNodeSharedPtr cur = openLists[pid].top();
+            NodeSharedPtr cur = openLists[pid].top();
             openLists[pid].pop();
 
             // If top of priority queue is worse than ceiling, than everything in open list is worse
@@ -152,10 +152,10 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
             // Update/put current node in visisted
             int hash = computeHash(cur->pos, cur->t);
-            std::unordered_map<int, LNodeSharedPtr>::iterator target = visited[pid].find(hash);
+            std::unordered_map<int, NodeSharedPtr>::iterator target = visited[pid].find(hash);
             if (target != visited[pid].end())
             {
-                LNodeSharedPtr existing_node = target->second;
+                NodeSharedPtr existing_node = target->second;
                 // Claim, compare, update (if better), release node
                 if (cur->g < existing_node->g)
                 {
@@ -200,7 +200,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     continue;
 
                 // Create child
-                LNodeSharedPtr nbr_node = std::make_shared<LockedNode>();
+                NodeSharedPtr nbr_node = std::make_shared<Node>();
                 nbr_node->pos = nbr_pos;
                 nbr_node->g = cur->g + _travel_cost[dir];
                 nbr_node->h = _heuristicMap[agent_id][nbr_pos.x][nbr_pos.y];
@@ -218,7 +218,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 else
                 {
                     // Claim, push to, release buffer
-                    LNodeBuffer &curBuffer = openListsBuffer[destination][pid];
+                    NodeBuffer &curBuffer = openListsBuffer[destination][pid];
                     omp_set_lock(&curBuffer.lock);
                     curBuffer.buffer.push_back(nbr_node);
                     omp_unset_lock(&curBuffer.lock);

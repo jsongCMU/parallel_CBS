@@ -13,17 +13,10 @@
 #define DIAGONAL (1.41421356)
 #define NUMPROCS (2)
 
-struct LockedNode : Node
+struct NodeBuffer
 {
     omp_lock_t lock;
-};
-
-typedef std::shared_ptr<LockedNode> LNodeSharedPtr;
-
-struct LNodeBuffer
-{
-    omp_lock_t lock;
-    std::vector<LNodeSharedPtr> buffer;
+    std::vector<NodeSharedPtr> buffer;
 };
 
 class HDAStar : public AStar
