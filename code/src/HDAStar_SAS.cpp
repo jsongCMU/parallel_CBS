@@ -152,6 +152,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
             // Update/put current node in visisted
             int hash = computeHash(cur->pos, cur->t);
+            bool makeChildren = true;
             std::unordered_map<int, NodeSharedPtr>::iterator target = visited[pid].find(hash);
             if (target != visited[pid].end())
             {
@@ -164,6 +165,8 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     existing_node->t = cur->t;
                     existing_node->parent = cur->parent;
                 }
+                else
+                    makeChildren = false;
             }
             else
             {
@@ -183,7 +186,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
             }
 
             // Generate children
-            for (int dir = 0; dir < NBR_CONNECTEDNESS; dir++)
+            for (int dir = 0; makeChildren && dir < NBR_CONNECTEDNESS; dir++)
             {
                 Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
 
