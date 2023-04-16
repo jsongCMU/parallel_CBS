@@ -8,6 +8,9 @@
 #include <chrono>
 #include "MAPFInstance.hpp"
 
+// Used if only want to test/evaluate single map; comment out to test all
+#define SINGLEFILE ("../instances/maze_map.txt")
+
 void saveToFile(std::string resultFile, std::string mapfFile, const std::vector<std::vector<Point2>> &paths)
 {
     std::ofstream resultStream;

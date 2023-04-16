@@ -94,6 +94,10 @@ int main()
     for (const auto & entry : std::filesystem::directory_iterator(path)){
         // Skip if necessary
         std::string testFile = entry.path();
+        #ifdef SINGLEFILE
+        if(testFile != SINGLEFILE)
+            continue;
+        #endif
         if(std::find(ignoreFiles.begin(), ignoreFiles.end(), testFile) != ignoreFiles.end())
             continue;
 
