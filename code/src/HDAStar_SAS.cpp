@@ -55,8 +55,9 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
     // Create flags
     bool finished[NUMPROCS];
-    omp_lock_t finishedLock;
-    omp_init_lock(&finishedLock);
+    omp_lock_t finishedLocks[NUMPROCS];
+    for(int i=0; i<NUMPROCS; i++)
+        omp_init_lock(&finishedLocks[i]);
 
     // Create root node
     NodeSharedPtr root = std::make_shared<Node>();
@@ -76,196 +77,193 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     float foundPathG = -1;
     int foundPathT = -1;
 
-    #pragma omp parallel for
-    for(int pid=0; pid<NUMPROCS; pid++)
+    while(true)
     {
-        while(true)
+        #pragma omp parallel for
+        for(int pid=0; pid<NUMPROCS; pid++)
         {
-            // Terminate process if all finished, and a path has been found
-            omp_set_lock(&allFinishedLock);
-            if(allFinished && foundPathG > -0.01)
+            while(true)
             {
+                // Exit loop and synchronize if all finished, and a path has been found
+                omp_set_lock(&allFinishedLock);
+                if(allFinished && foundPathG > -0.01)
+                {
+                    omp_unset_lock(&allFinishedLock);
+                    break;
+                }
                 omp_unset_lock(&allFinishedLock);
-                break;
-            }
-            omp_unset_lock(&allFinishedLock);
 
-            // Update status
-            // Flush buffer and update open lists
-            for(int srcID=0; srcID<NUMPROCS; srcID++)
-            {
-                // Grab nodes from srcID, load into dstID
-                if(pid==srcID)
+                // Update status
+                // Flush buffer and update open lists
+                for(int srcID=0; srcID<NUMPROCS; srcID++)
                 {
-                    // Ignore dummy buffer
-                    continue;
-                }
-                NodeBuffer &curBuffer = openListsBuffer[pid][srcID];
-                // Claim, copy, clear, release buffer
-                omp_set_lock(&curBuffer.lock);
-                std::vector<NodeSharedPtr> curNodes = curBuffer.buffer;
-                curBuffer.buffer.clear();
-                omp_unset_lock(&curBuffer.lock);
-
-                // Push to open list
-                for(const auto& node : curNodes)
-                    openLists[pid].push(node);
-            }
-            // Update finished status
-            omp_set_lock(&finishedLock);
-            finished[pid] = openLists[pid].empty();
-            omp_unset_lock(&finishedLock);
-
-            // Check if all complete
-            if(openLists[pid].empty())
-            {
-                bool localAllFinished = true;
-                omp_set_lock(&finishedLock);
-                for(int pid=0; pid<NUMPROCS; pid++)
-                {
-                    localAllFinished &= finished[pid];
-                }
-                omp_unset_lock(&finishedLock);
-                // Check all buffers are empty if finished
-                if(localAllFinished)
-                {
-                    for(int i=0; i<NUMPROCS; i++)
+                    // Grab nodes from srcID, load into dstID
+                    if(pid==srcID)
                     {
-                        bool doBreak = false;
-                        for(int j=0; j<NUMPROCS; j++)
-                        {
-                            if(i==j)
-                                continue;
-                            NodeBuffer &curBuffer = openListsBuffer[i][j];
-                            omp_set_lock(&curBuffer.lock);
-                            localAllFinished &= curBuffer.buffer.empty();
-                            omp_unset_lock(&curBuffer.lock);
-                            if(!localAllFinished)
-                            {
-                                doBreak = true;
-                                break;
-                            }
-                        }
-                        if(doBreak)
+                        // Ignore dummy buffer
+                        continue;
+                    }
+                    NodeBuffer &curBuffer = openListsBuffer[pid][srcID];
+                    // Claim, copy, clear, release buffer
+                    omp_set_lock(&curBuffer.lock);
+                    std::vector<NodeSharedPtr> curNodes = curBuffer.buffer;
+                    curBuffer.buffer.clear();
+                    omp_unset_lock(&curBuffer.lock);
+
+                    // Push to open list
+                    for(const auto& node : curNodes)
+                        openLists[pid].push(node);
+                }
+                // Update finished status
+                omp_set_lock(&finishedLocks[pid]);
+                finished[pid] = openLists[pid].empty();
+                omp_unset_lock(&finishedLocks[pid]);
+
+                // Check if all complete
+                if(openLists[pid].empty())
+                {
+                    bool localAllFinished = true;
+                    for(int pid=0; pid<NUMPROCS; pid++)
+                    {
+                        omp_set_lock(&finishedLocks[pid]);
+                        localAllFinished &= finished[pid];
+                        omp_unset_lock(&finishedLocks[pid]);
+                        if(!localAllFinished)
                             break;
                     }
+                    // Update all finished
+                    omp_set_lock(&allFinishedLock);
+                    allFinished |= localAllFinished;
+                    omp_unset_lock(&allFinishedLock);
+                    continue;
                 }
-                // Update all finished
-                omp_set_lock(&allFinishedLock);
-                allFinished = localAllFinished;
-                omp_unset_lock(&allFinishedLock);
-                continue;
-            }
 
-            // Start evaluation; grab current node
-            NodeSharedPtr cur = openLists[pid].top();
-            openLists[pid].pop();
+                // Start evaluation; grab current node
+                NodeSharedPtr cur = openLists[pid].top();
+                openLists[pid].pop();
 
-            // If top of priority queue is worse than ceiling, than everything in open list is worse
-            // Clear open list
-            if(foundPathG > -0.01 && cur->f >= foundPathG)
-            {
-                while(!openLists[pid].empty())
-                    openLists[pid].pop();
-                finished[pid] = true;
-                continue;
-            }
-
-            // Update/put current node in visisted
-            int hash = computeHash(cur->pos, cur->t);
-            bool makeChildren = true;
-            std::unordered_map<int, NodeSharedPtr>::iterator target = visited[pid].find(hash);
-            if (target != visited[pid].end())
-            {
-                NodeSharedPtr existing_node = target->second;
-                // Claim, compare, update (if better), release node
-                if (cur->g < existing_node->g)
+                // If top of priority queue is worse than ceiling, than everything in open list is worse
+                // Clear open list
+                if(foundPathG > -0.01 && cur->f >= foundPathG)
                 {
-                    existing_node->g = cur->g;
-                    existing_node->f = cur->f;
-                    existing_node->t = cur->t;
-                    existing_node->parent = cur->parent;
+                    while(!openLists[pid].empty())
+                        openLists[pid].pop();
+                    finished[pid] = true;
+                    continue;
+                }
+
+                // Update/put current node in visisted
+                int hash = computeHash(cur->pos, cur->t);
+                bool makeChildren = true;
+                std::unordered_map<int, NodeSharedPtr>::iterator target = visited[pid].find(hash);
+                if (target != visited[pid].end())
+                {
+                    NodeSharedPtr existing_node = target->second;
+                    // Claim, compare, update (if better), release node
+                    if (cur->g < existing_node->g)
+                    {
+                        existing_node->g = cur->g;
+                        existing_node->f = cur->f;
+                        existing_node->t = cur->t;
+                        existing_node->parent = cur->parent;
+                    }
+                    else
+                        makeChildren = false;
                 }
                 else
-                    makeChildren = false;
+                {
+                    // Node doesn't exist so just add it
+                    visited[pid].insert({hash, cur});
+                }
+
+                // If legitimate path found (which may be suboptimal), set/update ceiling
+                // All current/neighbor nodes with f value >= ceiling are worse, so ignore
+                if(cur->pos == goal && cur->t >= maxTimestep)
+                {
+                    if((foundPathG < 0) || (cur->g < foundPathG))
+                    {
+                        foundPathG = cur->g;
+                        foundPathT = cur->t;
+                    }
+                }
+
+                // Generate children
+                for (int dir = 0; makeChildren && dir < NBR_CONNECTEDNESS; dir++)
+                {
+                    Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
+
+                    // Skip if out of bounds
+                    if (nbr_pos.x >= _problem.rows || nbr_pos.y >= _problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
+                        continue;
+
+                    // Skip if inside obstacle
+                    if (_problem.map[nbr_pos.x][nbr_pos.y])
+                        continue;
+
+                    // Skip if violates constraints table
+                    if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
+                        continue;
+
+                    // Create child
+                    NodeSharedPtr nbr_node = std::make_shared<Node>();
+                    nbr_node->pos = nbr_pos;
+                    nbr_node->g = cur->g + _travel_cost[dir];
+                    nbr_node->h = _heuristicMap[agent_id][nbr_pos.x][nbr_pos.y];
+                    nbr_node->f = nbr_node->g + nbr_node->h;
+                    nbr_node->t = cur->t + 1;
+                    nbr_node->parent = cur;
+
+                    // Distribute child
+                    int destination = computeDestination(nbr_pos);
+                    if(destination == pid)
+                    {
+                        // Push to open list directly
+                        openLists[pid].push(nbr_node);
+                    }
+                    else
+                    {
+                        // Claim, push to, release buffer
+                        NodeBuffer &curBuffer = openListsBuffer[destination][pid];
+                        omp_set_lock(&curBuffer.lock);
+                        curBuffer.buffer.push_back(nbr_node);
+                        omp_unset_lock(&curBuffer.lock);
+                    }
+                }
+            }
+        }
+        // Verify buffers are all empty
+        #pragma omp parallel for
+        for(int pid=0; pid<NUMPROCS; pid++)
+        {
+            // Check all buffers are empty if finished
+            for(int srcPID=0; srcPID<NUMPROCS; srcPID++)
+            {
+                if(pid==srcPID)
+                    continue;
+                NodeBuffer &curBuffer = openListsBuffer[pid][srcPID];
+                if(!curBuffer.buffer.empty())
+                {
+                    allFinished = false;
+                    break;
+                }
+            }
+        }
+        if(allFinished)
+        {
+            int hash = computeHash(goal, foundPathT);
+            int goalPid = computeDestination(goal);
+            if (visited[goalPid].find(hash) != visited[goalPid].end())
+            {
+                computePath(visited[goalPid][hash], outputPath);
+                return true;
             }
             else
             {
-                // Node doesn't exist so just add it
-                visited[pid].insert({hash, cur});
-            }
-
-            // If legitimate path found (which may be suboptimal), set/update ceiling
-            // All current/neighbor nodes with f value >= ceiling are worse, so ignore
-            if(cur->pos == goal && cur->t >= maxTimestep)
-            {
-                if((foundPathG < 0) || (cur->g < foundPathG))
-                {
-                    foundPathG = cur->g;
-                    foundPathT = cur->t;
-                }
-            }
-
-            // Generate children
-            for (int dir = 0; makeChildren && dir < NBR_CONNECTEDNESS; dir++)
-            {
-                Point2 nbr_pos = Point2{cur->pos.x + _dx[dir], cur->pos.y + _dy[dir]};
-
-                // Skip if out of bounds
-                if (nbr_pos.x >= _problem.rows || nbr_pos.y >= _problem.cols || nbr_pos.x < 0 || nbr_pos.y < 0)
-                    continue;
-
-                // Skip if inside obstacle
-                if (_problem.map[nbr_pos.x][nbr_pos.y])
-                    continue;
-
-                // Skip if violates constraints table
-                if (isConstrained(cur->pos, nbr_pos, cur->t + 1, constraintsTable))
-                    continue;
-
-                // Create child
-                NodeSharedPtr nbr_node = std::make_shared<Node>();
-                nbr_node->pos = nbr_pos;
-                nbr_node->g = cur->g + _travel_cost[dir];
-                nbr_node->h = _heuristicMap[agent_id][nbr_pos.x][nbr_pos.y];
-                nbr_node->f = nbr_node->g + nbr_node->h;
-                nbr_node->t = cur->t + 1;
-                nbr_node->parent = cur;
-
-                // Distribute child
-                int destination = computeDestination(nbr_pos);
-                if(destination == pid)
-                {
-                    // Push to open list directly
-                    openLists[pid].push(nbr_node);
-                }
-                else
-                {
-                    // Claim, push to, release buffer
-                    NodeBuffer &curBuffer = openListsBuffer[destination][pid];
-                    omp_set_lock(&curBuffer.lock);
-                    curBuffer.buffer.push_back(nbr_node);
-                    omp_unset_lock(&curBuffer.lock);
-                }
+                // No path to goal found
+                return false;
             }
         }
     }
-    if(allFinished)
-    {
-        int hash = computeHash(goal, foundPathT);
-        int goalPid = computeDestination(goal);
-        if (visited[goalPid].find(hash) != visited[goalPid].end())
-        {
-            computePath(visited[goalPid][hash], outputPath);
-            return true;
-        }
-        else
-        {
-            // No path to goal found
-            return false;
-        }
-    }
-    return false;
 }
 
 // Return which processor should get this node
