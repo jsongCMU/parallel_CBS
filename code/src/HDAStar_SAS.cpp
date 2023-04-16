@@ -55,12 +55,19 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
     // Create flags
     bool finished[NUMPROCS];
+    omp_lock_t finishedLock;
+    omp_init_lock(&finishedLock);
 
     // Create root node
     NodeSharedPtr root = std::make_shared<Node>();
     root->f = root->g = root->h = 0.0f;
     root->t = 0;
     root->pos = start;
+
+    // Exit condition
+    bool allFinished = false;
+    omp_lock_t allFinishedLock;
+    omp_init_lock(&allFinishedLock);
 
     // Push to an open list
     openLists[computeDestination(root->pos)].push(root);
@@ -69,21 +76,31 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     float foundPathG = -1;
     int foundPathT = -1;
 
-    while (true)
+    #pragma omp parallel for
+    for(int pid=0; pid<NUMPROCS; pid++)
     {
-        // Flush buffer and update open lists
-        #pragma omp parallel for
-        for(int dstID=0; dstID<NUMPROCS; dstID++)
+        while(true)
         {
+            // Terminate process if all finished, and a path has been found
+            omp_set_lock(&allFinishedLock);
+            if(allFinished && foundPathG > -0.01)
+            {
+                omp_unset_lock(&allFinishedLock);
+                break;
+            }
+            omp_unset_lock(&allFinishedLock);
+
+            // Update status
+            // Flush buffer and update open lists
             for(int srcID=0; srcID<NUMPROCS; srcID++)
             {
                 // Grab nodes from srcID, load into dstID
-                if(dstID==srcID)
+                if(pid==srcID)
                 {
                     // Ignore dummy buffer
                     continue;
                 }
-                NodeBuffer &curBuffer = openListsBuffer[dstID][srcID];
+                NodeBuffer &curBuffer = openListsBuffer[pid][srcID];
                 // Claim, copy, clear, release buffer
                 omp_set_lock(&curBuffer.lock);
                 std::vector<NodeSharedPtr> curNodes = curBuffer.buffer;
@@ -92,51 +109,55 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
 
                 // Push to open list
                 for(const auto& node : curNodes)
-                    openLists[dstID].push(node);
+                    openLists[pid].push(node);
             }
-        }
-
-        // Check if open list is empty
-        #pragma omp parallel for
-        for(int pid=0; pid<NUMPROCS; pid++)
-        {
+            // Update finished status
+            omp_set_lock(&finishedLock);
             finished[pid] = openLists[pid].empty();
-        }
+            omp_unset_lock(&finishedLock);
 
-        // Check if all complete
-        bool allFinished = true;
-        #pragma omp parallel for reduction(&:allFinished)
-        for(int pid=0; pid<NUMPROCS; pid++)
-        {
-            allFinished &= finished[pid];
-        }
-
-        if(allFinished)
-        {
-            int hash = computeHash(goal, foundPathT);
-            int goalPid = computeDestination(goal);
-            if (visited[goalPid].find(hash) != visited[goalPid].end())
+            // Check if all complete
+            if(openLists[pid].empty())
             {
-                computePath(visited[goalPid][hash], outputPath);
-                return true;
-            }
-            else
-            {
-                // No path to goal found
-                return false;
-            }
-        }
-
-
-        // Start evaluation
-        #pragma omp parallel for
-        for(int pid=0; pid<NUMPROCS; pid++)
-        {
-            // Only run if not finished
-            if(finished[pid])
+                bool localAllFinished = true;
+                omp_set_lock(&finishedLock);
+                for(int pid=0; pid<NUMPROCS; pid++)
+                {
+                    localAllFinished &= finished[pid];
+                }
+                omp_unset_lock(&finishedLock);
+                // Check all buffers are empty if finished
+                if(localAllFinished)
+                {
+                    for(int i=0; i<NUMPROCS; i++)
+                    {
+                        bool doBreak = false;
+                        for(int j=0; j<NUMPROCS; j++)
+                        {
+                            if(i==j)
+                                continue;
+                            NodeBuffer &curBuffer = openListsBuffer[i][j];
+                            omp_set_lock(&curBuffer.lock);
+                            localAllFinished &= curBuffer.buffer.empty();
+                            omp_unset_lock(&curBuffer.lock);
+                            if(!localAllFinished)
+                            {
+                                doBreak = true;
+                                break;
+                            }
+                        }
+                        if(doBreak)
+                            break;
+                    }
+                }
+                // Update all finished
+                omp_set_lock(&allFinishedLock);
+                allFinished = localAllFinished;
+                omp_unset_lock(&allFinishedLock);
                 continue;
+            }
 
-            // Grab current node
+            // Start evaluation; grab current node
             NodeSharedPtr cur = openLists[pid].top();
             openLists[pid].pop();
 
@@ -229,7 +250,21 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
             }
         }
     }
-
+    if(allFinished)
+    {
+        int hash = computeHash(goal, foundPathT);
+        int goalPid = computeDestination(goal);
+        if (visited[goalPid].find(hash) != visited[goalPid].end())
+        {
+            computePath(visited[goalPid][hash], outputPath);
+            return true;
+        }
+        else
+        {
+            // No path to goal found
+            return false;
+        }
+    }
     return false;
 }
 
