@@ -107,7 +107,7 @@ int main()
 
         // Solve Problem
         int sumOfCosts;
-        double elapsedTime = 0;
+        double elapsedTime = 0, minTime = 1e30, maxTime = -1e30;
         std::vector<std::vector<Point2>> paths;
         for(int cnt=0; cnt<testAmount; cnt++)
         {
@@ -127,7 +127,10 @@ int main()
                 paths.push_back(path);
                 sumOfCosts += path.size()-1;
             }
-            elapsedTime += ttimer.elapsed();
+            double time = ttimer.elapsed();
+            elapsedTime += time;
+            minTime = (time < minTime) ? time : minTime;
+            maxTime = (time > maxTime) ? time : maxTime;
         }
         elapsedTime /= testAmount;
 
@@ -146,7 +149,7 @@ int main()
         {
             printf("SOC = %d (not tested)\n", sumOfCosts);
         }
-        printf("Elapsed time = %f ms\n", elapsedTime);
+        printf("Elapsed time = %f [%f,%f] ms\n", elapsedTime, minTime, maxTime);
 
         // Log results for specific test file
         if(testFile == animateFile){
