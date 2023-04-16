@@ -11,7 +11,7 @@
 #include "AStar.hpp"
 
 #define DIAGONAL (1.41421356)
-#define NUMPROCS (2)
+#define NUMPROCS (8)
 
 struct NodeBuffer
 {
