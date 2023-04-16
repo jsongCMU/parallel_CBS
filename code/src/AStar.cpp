@@ -187,6 +187,7 @@ void AStar::computePath(NodeSharedPtr goal, std::vector<Point2> &outputPath)
     std::reverse(outputPath.begin(), outputPath.end());
 }
 
+#ifdef DIJKSTRA
 void AStar::computeHeuristicMap()
 {
     // For each agent, compute heuristic using Dijkstra
@@ -290,6 +291,42 @@ void AStar::computeHeuristicMap()
         }
     }
 }
+
+#else
+void AStar::computeHeuristicMap()
+{
+    // For each agent, compute heuristic for each cell in map
+    _heuristicMap.clear();
+    _heuristicMap.resize(_problem.numAgents);
+    for(int id=0; id<_problem.numAgents; id++)
+    {
+        Point2 goal=_problem.goalLocs[id];
+        _heuristicMap[id].resize(_problem.map.size());
+        for(int i=0; i<_problem.map.size(); i++)
+        {
+            _heuristicMap[id][i].resize(_problem.map[i].size());
+            for(int j=0; j<_problem.map[i].size(); j++)
+            {
+                if(_problem.map[i][j])
+                    _heuristicMap[id][i][j] = 1e30;
+                else
+                {
+                    _heuristicMap[id][i][j] = computeHeuristic({i,j}, goal);
+                }
+            }
+        }
+    }
+}
+
+float AStar::computeHeuristic(const Point2 &start, const Point2 &goal)
+{
+    // return 0;
+    // Use octile distance since its an exact heuristic for 8 connected grids
+    int dx = abs(start.x - goal.x);
+    int dy = abs(start.y - goal.y);
+    return dx+dy; //std::max(dx, dy) - std::min(dx, dy) + DIAGONAL * std::min(dx, dy);
+}
+#endif
 
 int AStar::computeHash(const Point2 &pos, const int t)
 {
