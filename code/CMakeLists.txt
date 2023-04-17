@@ -9,7 +9,7 @@ set (CMAKE_CXX_STANDARD 17) # Use C++17
 # SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -O3")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fopenmp -lpthread")
 
-add_executable(parallelCBS src/main.cpp src/MAPFLoader.cpp src/CBSSolver.cpp src/AStar.cpp src/HDAStar_SAS.cpp)
+add_executable(evaluateHDAStar src/evaluateHDAStar.cpp src/MAPFLoader.cpp src/AStar.cpp src/HDAStar_SAS.cpp)
 
 add_executable(TestAStar test/testAStar.cpp src/AStar.cpp src/MAPFLoader.cpp)
 add_executable(TestMAPFLoader test/testMAPFLoader.cpp src/MAPFLoader.cpp)
