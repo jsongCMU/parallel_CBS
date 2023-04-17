@@ -116,6 +116,7 @@ int main()
         std::vector<std::vector<Point2>> paths;
         for(int cnt=0; cnt<testAmount; cnt++)
         {
+            paths.clear();
             sumOfCosts=0;
             ttimer.start();
             for(int i = 0; i < mapfProblem.numAgents; i++)
