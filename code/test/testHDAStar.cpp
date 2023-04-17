@@ -95,6 +95,7 @@ int main()
         // Skip if necessary
         std::string testFile = entry.path();
         #ifdef SINGLEFILE
+        animateFile = SINGLEFILE;
         if(testFile != SINGLEFILE)
             continue;
         #endif
