@@ -231,20 +231,30 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 }
             }
         }
-        // Verify buffers are all empty
+        // Verify open lists and buffers are all empty
         #pragma omp parallel for
         for(int pid=0; pid<NUMPROCS; pid++)
         {
-            // Check all buffers are empty if finished
-            for(int srcPID=0; srcPID<NUMPROCS; srcPID++)
+            if(!openLists[pid].empty())
             {
-                if(pid==srcPID)
-                    continue;
-                NodeBuffer &curBuffer = openListsBuffer[pid][srcPID];
-                if(!curBuffer.buffer.empty())
+                omp_set_lock(&allFinishedLock);
+                allFinished = false;
+                omp_unset_lock(&allFinishedLock);
+            }
+            else
+            {
+                for(int srcPID=0; srcPID<NUMPROCS; srcPID++)
                 {
-                    allFinished = false;
-                    break;
+                    if(pid==srcPID)
+                        continue;
+                    NodeBuffer &curBuffer = openListsBuffer[pid][srcPID];
+                    if(!curBuffer.buffer.empty())
+                    {
+                        omp_set_lock(&allFinishedLock);
+                        allFinished = false;
+                        omp_unset_lock(&allFinishedLock);
+                        break;
+                    }
                 }
             }
         }
