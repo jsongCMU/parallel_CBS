@@ -58,6 +58,7 @@ Our parallelized CBS achieved correctness, enabling it to solve Multi-Agent Path
 
 ![img](images/CBS_test_56.gif)
 
+## HDA*
 As mentioned, HDA* was successfully implemented and tested: comparing against sequential outputs shows that we have achieved correctness, and no race conditions exist. Testing showed that HDA* tended to outperform A* under adverserial conditions (ie. heuristic for map is weak, and the path to the goal is non-obvious), but the speedup wass small relative to number of processors. The algorithm is also very complex, which makes it difficult to modify or improve upon. Lastly, it scales poorly with number of processors: since we are using a shared address space approach, contention and the blocking of processors via mutex's increases signficiantly as more processors are used. For this reason, we will not be pursuing this method for the rest of the project.
 
 Below is a table showing HDA* (using 8 processors) speedup compared to A*:
