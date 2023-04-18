@@ -5,3 +5,4 @@ Here is our project for Carnegie Mellon University 15-618: Parallel Computer Arc
 
 # Links
 - [Proposal](proposal.html)
+- [Milestone](milestone.html)
