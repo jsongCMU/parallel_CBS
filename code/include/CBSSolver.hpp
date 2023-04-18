@@ -10,8 +10,9 @@
 class CBSSolver
 {
 public:
-    CBSSolver();
+    CBSSolver(MAPFInstance instance);
 
+    std::vector<std::vector<Point2>> solveParallel(MAPFInstance instance);
     std::vector<std::vector<Point2>> solve(MAPFInstance instance);
 
 private:
@@ -60,6 +61,7 @@ private:
     };
 
     int numNodesGenerated;
+    AStar lowLevelSolver;
 };
 
 #endif

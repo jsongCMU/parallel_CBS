@@ -68,14 +68,14 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
     ConstraintsTable constraintsTable = buildConstraintsTable(constraints, agent_id, maxTimestep);
 
     // Check validity of start and end
-    if (start.x >= _problem.rows || start.y >= _problem.cols)
+    if (start.x >= _problem.rows || start.y >= _problem.cols || _problem.map[start.x][start.y])
     {
-        printf("* ERR: AStar Failed: Start position not in bounds\n");
+        printf("* ERR: AStar Failed: Start position not in bounds or in collision\n");
         return false;
     }
-    else if (goal.x >= _problem.rows || goal.y >= _problem.cols)
+    else if (goal.x >= _problem.rows || goal.y >= _problem.cols ||  _problem.map[goal.x][goal.y])
     {
-        printf("* ERR: AStar Failed: Goal position not in bounds\n");
+        printf("* ERR: AStar Failed: Goal position not in bounds or in collision\n");
         return false;
     }
 

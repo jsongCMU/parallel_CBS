@@ -6,7 +6,7 @@ from matplotlib import animation
 from matplotlib.colors import ListedColormap
 
 Colors = ['green', 'blue', 'orange']
-STEPS_PER_MOVE = 2
+STEPS_PER_MOVE = 5
 
 
 class Animation:
@@ -40,6 +40,8 @@ class Animation:
         self.artists = []
         self.agents = dict()
         self.agent_names = dict()
+
+        self.name_offset = 5 if len(self.my_map) > 200 else 0.5
 
         x_min = -0.5
         y_min = -0.5
@@ -94,7 +96,7 @@ class Animation:
         for k in range(len(self.paths)):
             pos = self.get_state(t / STEPS_PER_MOVE, self.paths[k])
             self.agents[k].center = (pos[0], pos[1])
-            self.agent_names[k].set_position((pos[0], pos[1] + 0.5))
+            self.agent_names[k].set_position((pos[0], pos[1] + self.name_offset))
 
         # reset all colors
         for _, agent in self.agents.items():
