@@ -1,6 +1,8 @@
 <!-- Make sure your project schedule on your main project page is up to date with work completed so far, and well as with a revised plan of work for the coming weeks. As by this time you should have a good understanding of what is required to complete your project, 
 
 I want to see a very detailed schedule for the coming weeks. I suggest breaking time down into half-week increments. Each increment should have at least one task, and for each task put a person’s name on it. -->
+# Website
+[Project Page](index.html)
 
 # Old Schedule
 | Date      | Tasks |
