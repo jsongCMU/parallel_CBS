@@ -96,7 +96,7 @@ int main()
         MAPFInstance mapfProblem = loader.loadInstanceFromFile(testFile);
 
         // Create CBS solver
-        CBSSolver cbsSolver;
+        CBSSolver cbsSolver(mapfProblem);
 
         // Solve Problem
         double elapsedTime = 0;
