@@ -27,7 +27,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
     numNodesGenerated++;
 
     // Create paths for all agents
-    #pragma omp parallel for num_threads(MAXTHREADS) schedule(dynamic, instance.numAgents / MAXTHREADS)
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
         bool found = lowLevelSolver.solve(i, root->constraintList, root->paths[i]);
@@ -82,7 +81,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
         }
     }
 
-
     // Split nodes across processors
     for (int i = 1; i < MAXTHREADS; i++)
     {
@@ -95,25 +93,36 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
         throw std::logic_error("Incorrectly split nodes across processors");
     }
 
+    float bestCost = -1;
     bool solutionFound = false;
     CTNodeSharedPtr best = nullptr;
-
     
     #pragma omp parallel num_threads(MAXTHREADS)
     {
-        while (!pq[omp_get_thread_num()].empty() && !solutionFound)
+        while (!pq[omp_get_thread_num()].empty())
         {
             omp_set_lock(&pqLocks[omp_get_thread_num()]);
             CTNodeSharedPtr cur = pq[omp_get_thread_num()].top();
             pq[omp_get_thread_num()].pop();
             omp_unset_lock(&pqLocks[omp_get_thread_num()]);
+
+            if (solutionFound && cur->cost > bestCost)
+            {
+                break;
+            }
  
             // If no collisions in the node then return solution
             if (cur->collisionList.size() == 0)
             {
                 printf("prio pq %d\n", numNodesGenerated);
-                best = cur;
-                solutionFound = true;
+
+                if (cur->cost < bestCost || bestCost < 0)
+                {
+                    best = cur;
+                    bestCost = cur->cost;
+                    solutionFound = true;
+                }
+                
                 break;
             }
 
@@ -125,8 +134,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
                 child->constraintList = cur->constraintList;
                 child->constraintList.push_back(c);
                 child->paths = cur->paths;
-
-                // printf("New cons = %d (%d,%d) %d @ %d\n", c.agentNum, c.location.first.x, c.location.first.y, c.isVertexConstraint, c.t);
 
                 // Replan only for the agent that has the new constraint
                 child->paths[c.agentNum].clear();
@@ -143,10 +150,21 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
 
                     int destPq = child->id % MAXTHREADS;
 
-                    // Add to search queue
-                    omp_set_lock(&pqLocks[destPq]);
-                    pq[destPq].push(child);
-                    omp_unset_lock(&pqLocks[destPq]);
+                    if (solutionFound)
+                    {
+                        // Assign to own search queue
+                        omp_set_lock(&pqLocks[omp_get_thread_num()]);
+                        pq[omp_get_thread_num()].push(child);
+                        omp_unset_lock(&pqLocks[omp_get_thread_num()]);
+                    }
+                    else
+                    {
+                        // Assign to any of the search queues
+                        omp_set_lock(&pqLocks[destPq]);
+                        pq[destPq].push(child);
+                        omp_unset_lock(&pqLocks[destPq]);
+                    }
+
                 }
             }
         }
