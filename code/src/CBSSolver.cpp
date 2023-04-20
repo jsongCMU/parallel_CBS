@@ -1,33 +1,34 @@
 #include <queue>
 #include <omp.h>
 #include "CBSSolver.hpp"
+#include <chrono>
 
-#define MAXTHREADS 8
+#define MAXTHREADS 4
 
 CBSSolver::CBSSolver(MAPFInstance instance)
-: numNodesGenerated(0), lowLevelSolver(instance)
+    : numNodesGenerated(0), lowLevelSolver(instance)
 {
 }
 
 std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
 {
-    CTNodeSharedPtr curArray[MAXTHREADS];
-
     // Create priority queue
-    std::priority_queue <CTNodeSharedPtr, 
-                         std::vector<CTNodeSharedPtr>, 
-                         CTNodeComparator 
-                        > pq;
+    std::priority_queue<CTNodeSharedPtr,
+                        std::vector<CTNodeSharedPtr>,
+                        CTNodeComparator>
+        initPq;
 
     CTNodeSharedPtr root = std::make_shared<CTNode>();
     root->paths.resize(instance.numAgents);
-    root->id = numNodesGenerated++;
+    root->id = 0;
+    numNodesGenerated++;
 
     // Create paths for all agents
+    #pragma omp parallel for num_threads(MAXTHREADS)
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
         bool found = lowLevelSolver.solve(i, root->constraintList, root->paths[i]);
-        
+
         if (!found)
             throw NoSolutionException();
     }
@@ -35,82 +36,139 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
     root->cost = 0;
     detectCollisions(root->paths, root->collisionList);
 
-    pq.push(root);
+    initPq.push(root);
 
-    while (!pq.empty())
+    // Only run until there are at least 8 nodes in the Constraints Tree
+    while (!initPq.empty() && initPq.size() < MAXTHREADS)
     {
-        // Check if best is collision-free
-        if (pq.top()->collisionList.size() == 0)
+        CTNodeSharedPtr cur = initPq.top();
+        initPq.pop();
+
+        // If no collisions in the node then return solution
+        if (cur->collisionList.size() == 0)
         {
-            return pq.top()->paths;
+            printf("seq pq %d\n", numNodesGenerated);
+            return cur->paths;
         }
 
-        // Load input to parallel operation
-        int numItem = 0;
-        while(!pq.empty())
+        // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
+        for (Constraint &c : resolveCollision(cur->collisionList[0]))
         {
-            // Keep popping then adding to curArray until one of the following is true:
-            // 1. priority queue is empty
-            // 2. Max number of elements is reached
-            // 3. Node with no collisions is found; all nodes further down queue will only get worse as constraints are added
-            if(numItem >= MAXTHREADS)
-                break;
-            CTNodeSharedPtr cur = pq.top();
-            if(cur->collisionList.size() == 0)
-                break;
-            pq.pop();
-            curArray[numItem++] = cur;
-        }
+            // Add new constraint
+            CTNodeSharedPtr child = std::make_shared<CTNode>();
+            child->constraintList = cur->constraintList;
+            child->constraintList.push_back(c);
+            child->paths = cur->paths;
 
-        #pragma omp parallel
-        {
-            #pragma omp for
-            for(int i=0; i<numItem; i++)
+            // printf("New cons = %d (%d,%d) %d @ %d\n", c.agentNum, c.location.first.x, c.location.first.y, c.isVertexConstraint, c.t);
+
+            // Replan only for the agent that has the new constraint
+            child->paths[c.agentNum].clear();
+            bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
+
+            if (success)
             {
-                CTNodeSharedPtr cur = curArray[i];
-                // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
-                for (Constraint &c : resolveCollision(cur->collisionList[0]))
+                // Update cost and find collisions
+                child->cost = computeCost(child->paths);
+                detectCollisions(child->paths, child->collisionList);
+
+                // Set id
+                child->id = numNodesGenerated++;
+
+                // Add to search queue
+                initPq.push(child);
+            }
+        }
+    }
+
+    CTNodeSharedPtr firstNodes[MAXTHREADS];
+
+    // Split nodes across processors
+    for (int i = 0; i < MAXTHREADS; i++)
+    {
+        firstNodes[i] = initPq.top();
+        initPq.pop();
+    }
+    
+    if (!initPq.empty())
+    {
+        throw std::logic_error("Incorrectly split nodes across processors");
+    }
+
+    bool solutionFound = false;
+    CTNodeSharedPtr best = nullptr;
+
+    #pragma omp parallel num_threads(MAXTHREADS)
+    {
+        std::priority_queue<CTNodeSharedPtr,
+                            std::vector<CTNodeSharedPtr>,
+                            CTNodeComparator>
+            pq;
+
+        pq.push(firstNodes[omp_get_thread_num()]);
+
+        while (!pq.empty() && !solutionFound)
+        {
+            CTNodeSharedPtr cur = pq.top();
+            pq.pop();
+
+            // If no collisions in the node then return solution
+            if (cur->collisionList.size() == 0)
+            {
+                printf("prio pq %d\n", numNodesGenerated);
+                best = cur;
+                solutionFound = true;
+                break;
+            }
+
+            // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
+            for (Constraint &c : resolveCollision(cur->collisionList[0]))
+            {
+                // Add new constraint
+                CTNodeSharedPtr child = std::make_shared<CTNode>();
+                child->constraintList = cur->constraintList;
+                child->constraintList.push_back(c);
+                child->paths = cur->paths;
+
+                // printf("New cons = %d (%d,%d) %d @ %d\n", c.agentNum, c.location.first.x, c.location.first.y, c.isVertexConstraint, c.t);
+
+                // Replan only for the agent that has the new constraint
+                child->paths[c.agentNum].clear();
+                bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
+
+                if (success)
                 {
-                    // Add new constraint
-                    CTNodeSharedPtr child = std::make_shared<CTNode>();
-                    child->constraintList = cur->constraintList;
-                    child->constraintList.push_back(c);
-                    child->paths = cur->paths;
+                    // Update cost and find collisions
+                    child->cost = computeCost(child->paths);
+                    detectCollisions(child->paths, child->collisionList);
 
-                    // Replan only for the agent that has the new constraint
-                    child->paths[c.agentNum].clear();
-                    bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
+                    // Set id
+                    child->id = numNodesGenerated++;
 
-                    if (success)
-                    {
-                        // Update cost and find collisions
-                        child->cost = computeCost(child->paths);
-                        detectCollisions(child->paths, child->collisionList);
-                        
-                        // Set id
-                        child->id = numNodesGenerated++;
-
-                        // Add to search queue
-                        #pragma omp critical
-                        {
-                            pq.push(child);
-                        }
-                    }
+                    // Add to search queue
+                    pq.push(child);
                 }
             }
         }
     }
 
-    throw NoSolutionException();
+    if (best == nullptr)
+    {
+        throw NoSolutionException();
+    }
+    else
+    {
+        return best->paths;
+    }
 }
 
 std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
 {
     // Create priority queue
-    std::priority_queue <CTNodeSharedPtr, 
-                         std::vector<CTNodeSharedPtr>, 
-                         CTNodeComparator 
-                        > pq;
+    std::priority_queue<CTNodeSharedPtr,
+                        std::vector<CTNodeSharedPtr>,
+                        CTNodeComparator>
+        pq;
 
     CTNodeSharedPtr root = std::make_shared<CTNode>();
     root->paths.resize(instance.numAgents);
@@ -121,7 +179,7 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
         bool found = lowLevelSolver.solve(i, root->constraintList, root->paths[i]);
-        
+
         if (!found)
             throw NoSolutionException();
     }
@@ -187,7 +245,6 @@ int inline CBSSolver::computeCost(const std::vector<std::vector<Point2>> &paths)
     return result;
 }
 
-
 void CBSSolver::detectCollisions(const std::vector<std::vector<Point2>> &paths, std::vector<Collision> &collisionList)
 {
     Collision col;
@@ -234,14 +291,14 @@ inline Point2 CBSSolver::getLocation(const std::vector<Point2> &path, int t)
         return path[t];
 }
 
-inline std::vector<Constraint> CBSSolver::resolveCollision(const Collision& col)
+inline std::vector<Constraint> CBSSolver::resolveCollision(const Collision &col)
 {
     if (col.isVertexCollision)
     {
-        return std::vector<Constraint> {Constraint{col.agent1, col.t, true, col.location}, Constraint{col.agent2, col.t, true, col.location}};
+        return std::vector<Constraint>{Constraint{col.agent1, col.t, true, col.location}, Constraint{col.agent2, col.t, true, col.location}};
     }
     else
     {
-        return std::vector<Constraint> {Constraint{col.agent1, col.t, false, col.location}, Constraint{col.agent2, col.t, false, col.location}};
+        return std::vector<Constraint>{Constraint{col.agent1, col.t, false, col.location}, Constraint{col.agent2, col.t, false, col.location}};
     }
 }
