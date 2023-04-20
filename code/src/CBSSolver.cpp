@@ -99,73 +99,96 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
     
     #pragma omp parallel num_threads(MAXTHREADS)
     {
-        while (!pq[omp_get_thread_num()].empty())
+        while(true)
         {
-            omp_set_lock(&pqLocks[omp_get_thread_num()]);
-            CTNodeSharedPtr cur = pq[omp_get_thread_num()].top();
-            pq[omp_get_thread_num()].pop();
-            omp_unset_lock(&pqLocks[omp_get_thread_num()]);
-
-            if (solutionFound && cur->cost > bestCost)
+            while (!pq[omp_get_thread_num()].empty())
             {
-                break;
-            }
- 
-            // If no collisions in the node then return solution
-            if (cur->collisionList.size() == 0)
-            {
-                printf("prio pq %d\n", numNodesGenerated);
+                omp_set_lock(&pqLocks[omp_get_thread_num()]);
+                CTNodeSharedPtr cur = pq[omp_get_thread_num()].top();
+                pq[omp_get_thread_num()].pop();
+                omp_unset_lock(&pqLocks[omp_get_thread_num()]);
 
-                if (cur->cost < bestCost || bestCost < 0)
+                // Skip any nodes that are worse than the best cost
+                if (solutionFound && cur->cost >= bestCost)
                 {
-                    best = cur;
-                    bestCost = cur->cost;
-                    solutionFound = true;
+                    continue;
                 }
-                
-                break;
-            }
-
-            // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
-            for (Constraint &c : resolveCollision(cur->collisionList[0]))
-            {
-                // Add new constraint
-                CTNodeSharedPtr child = std::make_shared<CTNode>();
-                child->constraintList = cur->constraintList;
-                child->constraintList.push_back(c);
-                child->paths = cur->paths;
-
-                // Replan only for the agent that has the new constraint
-                child->paths[c.agentNum].clear();
-                bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
-
-                if (success)
+    
+                if (cur->collisionList.size() == 0)
                 {
-                    // Update cost and find collisions
-                    child->cost = computeCost(child->paths);
-                    detectCollisions(child->paths, child->collisionList);
+                    printf("prio pq %d\n", numNodesGenerated);
 
-                    // Set id
-                    child->id = numNodesGenerated++;
-
-                    int destPq = child->id % MAXTHREADS;
-
-                    if (solutionFound)
+                    // Only save the solution if it is better than the best seen so far
+                    if (cur->cost < bestCost || bestCost < 0)
                     {
-                        // Assign to own search queue
-                        omp_set_lock(&pqLocks[omp_get_thread_num()]);
-                        pq[omp_get_thread_num()].push(child);
-                        omp_unset_lock(&pqLocks[omp_get_thread_num()]);
+                        best = cur;
+                        bestCost = cur->cost;
+                        solutionFound = true;
                     }
-                    else
+                    
+                    continue;
+                }
+
+                // Get first collision and create two nodes (each containing a new plan for the two agents in the collision)
+                for (Constraint &c : resolveCollision(cur->collisionList[0]))
+                {
+                    // Add new constraint
+                    CTNodeSharedPtr child = std::make_shared<CTNode>();
+                    child->constraintList = cur->constraintList;
+                    child->constraintList.push_back(c);
+                    child->paths = cur->paths;
+
+                    // Replan only for the agent that has the new constraint
+                    child->paths[c.agentNum].clear();
+                    bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
+
+                    if (success)
                     {
+                        // Update cost and find collisions
+                        child->cost = computeCost(child->paths);
+                        detectCollisions(child->paths, child->collisionList);
+
+                        // Set id
+                        child->id = numNodesGenerated++;
+
+                        int destPq = child->id % MAXTHREADS;
+                        int minSize = pq[omp_get_thread_num()].size();
+
+                        // Load balance the priority queues
+                        for (int i = 0; i < MAXTHREADS; i++)
+                        {
+                            if (i == omp_get_thread_num())
+                                continue;
+
+                            if (pq[i].size() < minSize)
+                            {
+                                destPq = i;
+                                minSize = pq[i].size();
+                            }
+                        }
+
                         // Assign to any of the search queues
                         omp_set_lock(&pqLocks[destPq]);
                         pq[destPq].push(child);
                         omp_unset_lock(&pqLocks[destPq]);
                     }
-
                 }
+            }
+
+            bool allAreEmpty = true;
+            for (int i = 0; i < MAXTHREADS; i++)
+            {
+                if (!pq[i].empty())
+                {
+                    allAreEmpty = false;
+                    break;
+                }
+            }
+
+            // Only finish if all priority queues are empty
+            if (allAreEmpty)
+            {
+                break;
             }
         }
     }
