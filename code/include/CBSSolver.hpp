@@ -6,6 +6,9 @@
 #include "MAPFInstance.hpp"
 #include "SolverUtils.hpp"
 #include "AStar.hpp"
+#include <omp.h>
+
+#define MAXTHREADS 8
 
 class CBSSolver
 {
@@ -62,6 +65,8 @@ private:
 
     int numNodesGenerated;
     AStar lowLevelSolver;
+
+    omp_lock_t pqLocks[MAXTHREADS];
 };
 
 #endif
