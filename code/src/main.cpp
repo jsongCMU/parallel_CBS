@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     // parse commandline options ////////////////////////////////////////////
     int opt;
     std::string inputFile;
-    std::string outputFile = "../outputs/results.txt";
+    std::string outputFile = "../outputs/result.txt";
     bool useParallel = true;
 
     static struct option long_options[] = {
