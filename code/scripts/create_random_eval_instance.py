@@ -112,10 +112,11 @@ if __name__ == '__main__':
 
     print("*** Load map ***")
     map = import_map(args.map)
+    prefix = args.map.replace('.txt', '')
 
     for i in range(args.num_instances):
         print("*** Create random start + goal locations ***")
         starts, goals = create_random_start_goal(map, args.num_agents)
 
         save_new_mapf_instance(
-            f'../instances/evaluation/eval_n{args.num_agents}_i{i}.txt', map, starts, goals)
+            f'{prefix}_n{args.num_agents}_i{i}.txt', map, starts, goals)
