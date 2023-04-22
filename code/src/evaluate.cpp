@@ -8,9 +8,11 @@ const int testAmount = 5;
 
 // Evaluation maps
 const std::vector<std::string> evalMaps = {
-    "../instances/test_4.txt",
-    "../instances/test_23.txt",
-    "../instances/test_57.txt"
+    "../instances/evaluation/evaluation_maze-128-128-10_n10_i0.txt",
+    "../instances/evaluation/evaluation_random-32-32-10_n10_i0.txt",
+    "../instances/evaluation/evaluation_random-32-32-20_n10_i0.txt",
+    "../instances/evaluation/evaluation_room-64-64-16_n10_i0.txt",
+    "../instances/evaluation/evaluation_room-64-64-8_n10_i0.txt",
 };
 
 // Evaluation output
@@ -42,6 +44,7 @@ int main()
         CBSSolver cbsSolver(mapfProblem);
         for(int testCnt=0; testCnt<testAmount; testCnt++)
         {
+            std::cout << ".";
             std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
             std::chrono::duration<double, std::milli> duration;
             std::vector<std::vector<Point2>> paths;
@@ -66,6 +69,7 @@ int main()
             // Verify SOC is same between methods
             if(socS != socP)
             {
+                std::cout << "\n";
                 std::cout << "* ERRROR! Serial (" << socS << ") and parallel (" << socP << ") have different SOCs!\n";
                 evalStream << "* ERRROR! Serial (" << socS << ") and parallel (" << socP << ") have different SOCs!\n";
             }
@@ -74,10 +78,12 @@ int main()
                 prevSOC = socS;
             else if(prevSOC != socS)
             {
+                std::cout << "\n";
                 std::cout << "* ERRROR! SOC changes between runs! " << prevSOC << " vs " << socS << "\n";
                 evalStream << "* ERRROR! SOC changes between runs! " << prevSOC << " vs " << socS << "\n";
             }
         }
+        std::cout << "\n";
         // Compute average runtimes and speedups
         float avgS=0, avgP=0, speedup;
         for(int i=0; i<testAmount; i++)
