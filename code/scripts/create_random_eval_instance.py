@@ -36,7 +36,7 @@ def in_occ_space(map, x, y):
     left = max(x-1, 0)
     right = min(x+1, len(map) - 1)
 
-    return map[x][up] or map[x][down] or map[left][y] or map[right][y]
+    return map[x][up] or map[x][down] or map[left][y] or map[right][y] or map[x][y]
 
 
 def get_free_location(map, locations):
