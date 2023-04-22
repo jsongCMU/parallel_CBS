@@ -70,12 +70,12 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
     // Check validity of start and end
     if (start.x >= _problem.rows || start.y >= _problem.cols || _problem.map[start.x][start.y])
     {
-        printf("* ERR: AStar Failed: Start position not in bounds or in collision\n");
+        printf("* ERR: AStar Failed: Start position not in bounds or in collision (%d,%d)\n", start.x, start.y);
         return false;
     }
     else if (goal.x >= _problem.rows || goal.y >= _problem.cols ||  _problem.map[goal.x][goal.y])
     {
-        printf("* ERR: AStar Failed: Goal position not in bounds or in collision\n");
+        printf("* ERR: AStar Failed: Goal position not in bounds or in collision (%d,%d)\n", goal.x, goal.y);
         return false;
     }
 
