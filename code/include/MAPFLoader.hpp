@@ -10,7 +10,7 @@ class MAPFLoader
 
     MAPFInstance loadInstanceFromFile(const std::string& fileName);
 
-    private:
+    protected:
     void parseText(std::string text, MAPFInstance &result);
     void parseRowsAndCols(std::string line, MAPFInstance &result);
     void parseMap(std::string map_as_txt, MAPFInstance &result);
