@@ -107,6 +107,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
         throw std::logic_error("Incorrectly split nodes across processors");
     }
 
+    bool timeout = false;
     bool solutionFound = false;
     CTNodeSharedPtr best = nullptr;
 
@@ -121,6 +122,17 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
 
         while (!pq.empty() && !solutionFound)
         {
+            // Check if abort due to timeout
+            if(runtimeLimitMs > 0)
+            {
+                elapsedTime = std::chrono::high_resolution_clock::now() - startTime;
+                if(elapsedTime.count() > runtimeLimitMs)
+                {
+                    timeout = true;
+                    break;
+                }
+            }
+
             CTNodeSharedPtr cur = pq.top();
             pq.pop();
 
@@ -163,6 +175,8 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
             }
         }
     }
+    if(timeout)
+        throw TimeoutException();
 
     if (best == nullptr)
     {
