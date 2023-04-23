@@ -14,6 +14,9 @@ add_library(mapfGenerator src/MAPFGenerator.cpp src/MAPFLoader.cpp)
 add_executable(parallelCBS src/main.cpp src/MAPFLoader.cpp src/CBSSolver.cpp src/AStar.cpp)
 add_executable(speedup src/speedup.cpp src/MAPFLoader.cpp src/CBSSolver.cpp src/AStar.cpp)
 
+add_executable(scaling src/scaling.cpp src/CBSSolver.cpp src/AStar.cpp)
+target_link_libraries(scaling mapfGenerator)
+
 add_executable(TestAStar test/testAStar.cpp src/AStar.cpp src/MAPFLoader.cpp)
 add_executable(TestMAPFLoader test/testMAPFLoader.cpp src/MAPFLoader.cpp)
 add_executable(TestCBS test/testCBS.cpp src/MAPFLoader.cpp src/CBSSolver.cpp src/AStar.cpp)
