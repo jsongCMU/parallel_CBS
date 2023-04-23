@@ -10,8 +10,12 @@ CBSSolver::CBSSolver(MAPFInstance instance)
 {
 }
 
-std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
+std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance, double runtimeLimitMs)
 {
+    // Keep track of time
+    std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsedTime;
+
     // Create priority queue
     std::priority_queue<CTNodeSharedPtr,
                         std::vector<CTNodeSharedPtr>,
@@ -41,6 +45,14 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
     // Only run until there are at least 8 nodes in the Constraints Tree
     while (!initPq.empty() && initPq.size() < MAXTHREADS)
     {
+        // Check if abort due to timeout
+        if(runtimeLimitMs > 0)
+        {
+            elapsedTime = std::chrono::high_resolution_clock::now() - startTime;
+            if(elapsedTime.count() > runtimeLimitMs)
+                throw TimeoutException();
+        }
+
         CTNodeSharedPtr cur = initPq.top();
         initPq.pop();
 
@@ -162,8 +174,12 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance)
     }
 }
 
-std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
+std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance, double runtimeLimitMs)
 {
+    // Keep track of time
+    std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsedTime;
+
     // Create priority queue
     std::priority_queue<CTNodeSharedPtr,
                         std::vector<CTNodeSharedPtr>,
@@ -191,6 +207,14 @@ std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance)
 
     while (!pq.empty())
     {
+        // Check if abort due to timeout
+        if(runtimeLimitMs > 0)
+        {
+            elapsedTime = std::chrono::high_resolution_clock::now() - startTime;
+            if(elapsedTime.count() > runtimeLimitMs)
+                throw TimeoutException();
+        }
+
         CTNodeSharedPtr cur = pq.top();
         pq.pop();
 

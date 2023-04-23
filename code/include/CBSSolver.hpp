@@ -1,6 +1,7 @@
 #ifndef CBS_SOLVER_H
 #define CBS_SOLVER_H
 
+#include <chrono>
 #include <memory>
 #include <tuple>
 #include "MAPFInstance.hpp"
@@ -12,8 +13,8 @@ class CBSSolver
 public:
     CBSSolver(MAPFInstance instance);
 
-    std::vector<std::vector<Point2>> solveParallel(MAPFInstance instance);
-    std::vector<std::vector<Point2>> solve(MAPFInstance instance);
+    std::vector<std::vector<Point2>> solveParallel(MAPFInstance instance, double runtimeLimitMs=-1);
+    std::vector<std::vector<Point2>> solve(MAPFInstance instance, double runtimeLimitMs=-1);
 
 private:
     int inline computeCost(const std::vector<std::vector<Point2>> &paths);
@@ -57,6 +58,14 @@ private:
         char *what()
         {
             return (char*)"No Solution exists for the given MAPF instance";
+        }
+    };
+
+    class TimeoutException : public std::exception
+    {
+        char *what()
+        {
+            return (char*)"Unable to find solution in time";
         }
     };
 
