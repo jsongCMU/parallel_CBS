@@ -116,6 +116,11 @@ int main()
                 {
                     std::cout << "* ERRROR! Serial (" << socS << ") and parallel (" << socP << ") have different SOCs!\n";
                     outputStream << "* ERRROR! Serial (" << socS << ") and parallel (" << socP << ") have different SOCs!\n";
+                    outputStream << "\tMap: " << map << "\n";
+                    outputStream << "\tStart-Goal: ";
+                    for(int i=0; i<mapfProblem.numAgents; i++)
+                        outputStream << "(" << mapfProblem.startLocs[i].x << "," << mapfProblem.startLocs[i].y << ")-(" << mapfProblem.goalLocs[i].x << "," << mapfProblem.goalLocs[i].y << "); ";
+                    outputStream << "\n";
                     outputStream.close();
                     return 1;
                 }
