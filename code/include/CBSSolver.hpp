@@ -16,6 +16,22 @@ public:
     std::vector<std::vector<Point2>> solveParallel(MAPFInstance instance, double runtimeLimitMs=-1);
     std::vector<std::vector<Point2>> solve(MAPFInstance instance, double runtimeLimitMs=-1);
 
+    class NoSolutionException : public std::exception
+    {
+        char *what()
+        {
+            return (char*)"No Solution exists for the given MAPF instance";
+        }
+    };
+
+    class TimeoutException : public std::exception
+    {
+        char *what()
+        {
+            return (char*)"Unable to find solution in time";
+        }
+    };
+
 private:
     int inline computeCost(const std::vector<std::vector<Point2>> &paths);
     void detectCollisions(const std::vector<std::vector<Point2>> &paths, std::vector<Collision> &collisionList);
@@ -53,21 +69,6 @@ private:
         }
     };
 
-    class NoSolutionException : public std::exception
-    {
-        char *what()
-        {
-            return (char*)"No Solution exists for the given MAPF instance";
-        }
-    };
-
-    class TimeoutException : public std::exception
-    {
-        char *what()
-        {
-            return (char*)"Unable to find solution in time";
-        }
-    };
 
     int numNodesGenerated;
     AStar lowLevelSolver;

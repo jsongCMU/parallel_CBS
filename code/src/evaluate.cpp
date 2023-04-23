@@ -57,7 +57,20 @@ int main()
 
             // Solve problem serially
             start = std::chrono::high_resolution_clock::now();
-            paths = cbsSolver.solve(mapfProblem, testLimit);
+            try
+            {
+                paths = cbsSolver.solve(mapfProblem, testLimit);
+            }
+            catch(const CBSSolver::TimeoutException &e)
+            {
+                printf("* Timeout error!\n");
+                return 1;
+            }
+            catch(...)
+            {
+                printf("* Invalid MAPF problem!\n");
+                return 1;
+            }
             end = std::chrono::high_resolution_clock::now();
             duration = end-start;
             serialTimes[testCnt] = duration.count();
