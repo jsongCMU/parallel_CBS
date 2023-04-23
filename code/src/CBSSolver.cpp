@@ -106,6 +106,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
     }
 
     float bestCost = -1;
+    bool timeout = false;
     bool solutionFound = false;
     CTNodeSharedPtr best = nullptr;
     
@@ -120,7 +121,10 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
                 {
                     elapsedTime = std::chrono::high_resolution_clock::now() - startTime;
                     if(elapsedTime.count() > runtimeLimitMs)
-                        throw TimeoutException();
+                    {
+                        timeout = true;
+                        break;
+                    }
                 }
 
                 omp_set_lock(&pqLocks[omp_get_thread_num()]);
@@ -195,6 +199,9 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
                 }
             }
 
+            if(timeout)
+                break;
+
             bool allAreEmpty = true;
             for (int i = 0; i < MAXTHREADS; i++)
             {
@@ -212,6 +219,9 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
             }
         }
     }
+
+    if(timeout)
+        throw TimeoutException();
 
     if (best == nullptr)
     {
