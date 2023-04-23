@@ -15,6 +15,8 @@ CBSSolver::CBSSolver(MAPFInstance instance)
 
 std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance, double runtimeLimitMs)
 {
+    numNodesGenerated = 0;
+
     // Keep track of time
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsedTime;
@@ -31,6 +33,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
     numNodesGenerated++;
 
     // Create paths for all agents
+    #pragma omp parallel for num_threads(MAXTHREADS) schedule(dynamic, (instance.numAgents / MAXTHREADS) + 1)
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
         bool found = lowLevelSolver.solve(i, root->constraintList, root->paths[i]);
@@ -105,7 +108,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
         throw std::logic_error("Incorrectly split nodes across processors");
     }
 
-    float bestCost = -1;
+    int bestCost = -1;
     bool timeout = false;
     bool solutionFound = false;
     CTNodeSharedPtr best = nullptr;
@@ -127,6 +130,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
                     }
                 }
 
+                // Lock and get next node
                 omp_set_lock(&pqLocks[omp_get_thread_num()]);
                 CTNodeSharedPtr cur = pq[omp_get_thread_num()].top();
                 pq[omp_get_thread_num()].pop();
@@ -138,6 +142,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
                     continue;
                 }
     
+                // Check if solution found
                 if (cur->collisionList.size() == 0)
                 {
                     printf("prio pq %d\n", numNodesGenerated);
@@ -164,6 +169,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
 
                     // Replan only for the agent that has the new constraint
                     child->paths[c.agentNum].clear();
+                    
                     bool success = lowLevelSolver.solve(c.agentNum, child->constraintList, child->paths[c.agentNum]);
 
                     if (success)
@@ -175,7 +181,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
                         // Set id
                         child->id = numNodesGenerated++;
 
-                        int destPq = child->id % MAXTHREADS;
+                        int destPq = omp_get_thread_num();
                         int minSize = pq[omp_get_thread_num()].size();
 
                         // Load balance the priority queues
@@ -202,6 +208,8 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
             if(timeout)
                 break;
 
+            #pragma omp barrier
+
             bool allAreEmpty = true;
             for (int i = 0; i < MAXTHREADS; i++)
             {
@@ -211,6 +219,8 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
                     break;
                 }
             }
+            
+            #pragma omp barrier
 
             // Only finish if all priority queues are empty
             if (allAreEmpty)
@@ -235,6 +245,8 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
 
 std::vector<std::vector<Point2>> CBSSolver::solve(MAPFInstance instance, double runtimeLimitMs)
 {
+    numNodesGenerated = 0;
+
     // Keep track of time
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsedTime;
