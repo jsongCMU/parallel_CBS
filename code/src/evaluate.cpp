@@ -3,6 +3,11 @@
 #include "MAPFLoader.hpp"
 #include "CBSSolver.hpp"
 
+#define MIN_TO_MSEC(t) (t*60*1000)
+
+// Test time limit, in milliseconds
+const double testLimit = MIN_TO_MSEC(1);
+
 // Evaluation amount
 const int testAmount = 5;
 
@@ -52,7 +57,7 @@ int main()
 
             // Solve problem serially
             start = std::chrono::high_resolution_clock::now();
-            paths = cbsSolver.solve(mapfProblem);
+            paths = cbsSolver.solve(mapfProblem, testLimit);
             end = std::chrono::high_resolution_clock::now();
             duration = end-start;
             serialTimes[testCnt] = duration.count();
@@ -60,7 +65,7 @@ int main()
                 socS += path.size();
             // Solve problem parallely
             start = std::chrono::high_resolution_clock::now();
-            paths = cbsSolver.solveParallel(mapfProblem);
+            paths = cbsSolver.solveParallel(mapfProblem, testLimit);
             end = std::chrono::high_resolution_clock::now();
             duration = end-start;
             parallelTimes[testCnt] = duration.count();
