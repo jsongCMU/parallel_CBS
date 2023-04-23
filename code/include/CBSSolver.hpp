@@ -41,7 +41,7 @@ private:
 
     struct CTNode
     {
-        float cost;
+        int cost;
         std::vector<std::vector<Point2>> paths;
         std::vector<Collision> collisionList;
         std::vector<Constraint> constraintList;

@@ -28,7 +28,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
     numNodesGenerated++;
 
     // Create paths for all agents
-    #pragma omp parallel for num_threads(MAXTHREADS)
+    #pragma omp parallel for num_threads(MAXTHREADS) schedule(dynamic, (instance.numAgents / MAXTHREADS) + 1)
     for (int i = 0; i < instance.startLocs.size(); i++)
     {
         bool found = lowLevelSolver.solve(i, root->constraintList, root->paths[i]);
@@ -109,6 +109,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
 
     bool timeout = false;
     bool solutionFound = false;
+    int bestCost;
     CTNodeSharedPtr best = nullptr;
 
     #pragma omp parallel num_threads(MAXTHREADS)
@@ -120,7 +121,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
 
         pq.push(firstNodes[omp_get_thread_num()]);
 
-        while (!pq.empty() && !solutionFound)
+        while (!pq.empty())
         {
             // Check if abort due to timeout
             if(runtimeLimitMs > 0)
@@ -136,10 +137,16 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
             CTNodeSharedPtr cur = pq.top();
             pq.pop();
 
+            if (solutionFound && cur->cost >= bestCost)
+            {
+                break;
+            }
+
             // If no collisions in the node then return solution
             if (cur->collisionList.size() == 0)
             {
                 printf("prio pq %d\n", numNodesGenerated);
+                bestCost = cur->cost;
                 best = cur;
                 solutionFound = true;
                 break;
