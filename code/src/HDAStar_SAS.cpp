@@ -81,7 +81,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     std::vector<BlockLog> blockLogs[NUMPROCS];
     std::chrono::time_point<std::chrono::high_resolution_clock> blockStart[NUMPROCS], blockEnd[NUMPROCS], startTime;
     std::chrono::duration<double, std::micro> blockDur1[NUMPROCS], blockDur2[NUMPROCS];
-    const double minTime = 2; // Need to prevent logging of every tiny block; pushes too many things to vector
+    const double minTime = 1; // Need to prevent logging of every tiny block; pushes too many things to vector
     int numNodes[NUMPROCS];
     for(int i=0; i<NUMPROCS; i++)
         numNodes[i] = 0;
@@ -340,6 +340,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
             // Display logging
             blockDur1[0] = std::chrono::high_resolution_clock::now() - startTime;
             double sumBlock = 0;
+            printf("NUMPROCS = %d\n", NUMPROCS);
             printf("data = [\n");
             for(int pid=0; pid< NUMPROCS; pid++)
             {
