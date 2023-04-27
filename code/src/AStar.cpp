@@ -104,7 +104,7 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
 
         if (cur->pos == goal && cur->t >= maxTimestep)
         {
-            printf("#\tA* Total nodes = %d\n", numNodes);
+            printf("# A* Total nodes = %d\n", numNodes);
             computePath(cur, outputPath);
             return true;
         }
