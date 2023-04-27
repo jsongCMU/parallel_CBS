@@ -40,17 +40,19 @@ int main()
 
             // Solve Problem
             int sumOfCosts[2] = {0,0};
-            for(int cnt=0; cnt<2; cnt++)
+            for(int j = 0; j < mapfProblem.numAgents; j++)
             {
                 // Measure
-                ttimer.start();
-                for(int j = 0; j < mapfProblem.numAgents; j++)
+                // ttimer.start();
+                for(int cnt=0; cnt<2; cnt++)
                 {
                     std::vector<Point2> path;
                     bool succ;
-                    printf("# Agent %d:\n", j);
                     if(cnt==0)
+                    {
+                        printf("# Agent %d:\n", j);
                         succ = aStarSolver.solve(j, {}, path);
+                    }
                     else
                     {
                         succ = hdaStarSolver.solve(j, {}, path);
@@ -62,12 +64,12 @@ int main()
                     sumOfCosts[cnt] += path.size()-1;
                 }
                 // Display
-                printf("%30s: ", evalMap.c_str());
-                if(cnt==0)
-                    printf("A*   (ms): ");
-                else
-                    printf("HDA* (ms): ");
-                printf("%f\n", ttimer.elapsed());
+                // printf("%30s: ", evalMap.c_str());
+                // if(cnt==0)
+                //     printf("A*   (ms): ");
+                // else
+                //     printf("HDA* (ms): ");
+                // printf("%f\n", ttimer.elapsed());
             }
             if(sumOfCosts[0] != sumOfCosts[1])
             {
