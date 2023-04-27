@@ -3,7 +3,7 @@ import math
 from PIL import Image, ImageDraw
   
 # Data is in the format: (pid, tag, tstart, tend)
-HEIGHT = 40
+HEIGHT = 20
 MARGIN = 0
 NUMPROCS = 8
 # Agent 3:
@@ -52,7 +52,7 @@ for datum in data:
     y1 = HEIGHT * datum[0]
     x2 = int(datum[3]*SCALE)
     y2 = y1+HEIGHT-MARGIN
-    img1.rectangle([x1,y1,x2,y2], fill =tagColor[datum[1]], outline =None)
+    img1.rectangle([x1,y1+1,x2,y2-1], fill =tagColor[datum[1]], outline =None)
 
 # Save
 img.save('../outputs/timeline.jpg')
