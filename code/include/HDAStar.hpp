@@ -5,6 +5,7 @@
 #include <memory>
 #include <unordered_map>
 #include <omp.h>
+#include <chrono>
 
 #include "MAPFInstance.hpp"
 #include "SolverUtils.hpp"
@@ -12,6 +13,14 @@
 
 #define DIAGONAL (1.41421356)
 #define NUMPROCS (8)
+
+struct BlockLog
+{
+    int pid;
+    int tag;
+    double tStart;
+    double tEnd;
+};
 
 struct NodeBuffer
 {

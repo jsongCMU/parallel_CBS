@@ -77,6 +77,12 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     float foundPathG = -1;
     int foundPathT = -1;
 
+    // Logging
+    std::vector<BlockLog> blockLogs[NUMPROCS];
+    std::chrono::time_point<std::chrono::high_resolution_clock> blockStart[NUMPROCS], blockEnd[NUMPROCS], startTime;
+    std::chrono::duration<double, std::micro> blockDur1[NUMPROCS], blockDur2[NUMPROCS];
+    const double minTime = 5;
+    startTime = std::chrono::high_resolution_clock::now();
     while(true)
     {
         #pragma omp parallel for
@@ -85,7 +91,13 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
             while(true)
             {
                 // Exit loop and synchronize if all finished, and a path has been found
+                blockStart[pid] = std::chrono::high_resolution_clock::now();
                 omp_set_lock(&allFinishedLock);
+                blockEnd[pid] = std::chrono::high_resolution_clock::now();
+                blockDur1[pid] = blockStart[pid] - startTime;
+                blockDur2[pid] = blockEnd[pid] - startTime;
+                if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                    blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
                 if(allFinished && foundPathG > -0.01)
                 {
                     omp_unset_lock(&allFinishedLock);
@@ -105,7 +117,13 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     }
                     NodeBuffer &curBuffer = openListsBuffer[pid][srcID];
                     // Claim, copy, clear, release buffer
+                    blockStart[pid] = std::chrono::high_resolution_clock::now();
                     omp_set_lock(&curBuffer.lock);
+                    blockEnd[pid] = std::chrono::high_resolution_clock::now();
+                    blockDur1[pid] = blockStart[pid] - startTime;
+                    blockDur2[pid] = blockEnd[pid] - startTime;
+                    if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                        blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
                     std::vector<NodeSharedPtr> curNodes = curBuffer.buffer;
                     curBuffer.buffer.clear();
                     omp_unset_lock(&curBuffer.lock);
@@ -115,7 +133,13 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                         openLists[pid].push(node);
                 }
                 // Update finished status
+                blockStart[pid] = std::chrono::high_resolution_clock::now();
                 omp_set_lock(&finishedLocks[pid]);
+                blockEnd[pid] = std::chrono::high_resolution_clock::now();
+                blockDur1[pid] = blockStart[pid] - startTime;
+                blockDur2[pid] = blockEnd[pid] - startTime;
+                if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                    blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
                 finished[pid] = openLists[pid].empty();
                 omp_unset_lock(&finishedLocks[pid]);
 
@@ -125,14 +149,26 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     bool localAllFinished = true;
                     for(int pid=0; pid<NUMPROCS; pid++)
                     {
+                        blockStart[pid] = std::chrono::high_resolution_clock::now();
                         omp_set_lock(&finishedLocks[pid]);
+                        blockEnd[pid] = std::chrono::high_resolution_clock::now();
+                        blockDur1[pid] = blockStart[pid] - startTime;
+                        blockDur2[pid] = blockEnd[pid] - startTime;
+                        if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                            blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
                         localAllFinished &= finished[pid];
                         omp_unset_lock(&finishedLocks[pid]);
                         if(!localAllFinished)
                             break;
                     }
                     // Update all finished
+                    blockStart[pid] = std::chrono::high_resolution_clock::now();
                     omp_set_lock(&allFinishedLock);
+                    blockEnd[pid] = std::chrono::high_resolution_clock::now();
+                    blockDur1[pid] = blockStart[pid] - startTime;
+                    blockDur2[pid] = blockEnd[pid] - startTime;
+                    if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                        blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
                     allFinished |= localAllFinished;
                     omp_unset_lock(&allFinishedLock);
                     continue;
@@ -224,12 +260,28 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     {
                         // Claim, push to, release buffer
                         NodeBuffer &curBuffer = openListsBuffer[destination][pid];
+                        blockStart[pid] = std::chrono::high_resolution_clock::now();
                         omp_set_lock(&curBuffer.lock);
+                        blockEnd[pid] = std::chrono::high_resolution_clock::now();
+                        blockDur1[pid] = blockStart[pid] - startTime;
+                        blockDur2[pid] = blockEnd[pid] - startTime;
+                        if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                            blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
                         curBuffer.buffer.push_back(nbr_node);
                         omp_unset_lock(&curBuffer.lock);
                     }
                 }
             }
+            // Synchronization
+            blockStart[pid] = std::chrono::high_resolution_clock::now();
+        }
+        blockEnd[0] = std::chrono::high_resolution_clock::now();
+        for(int pid=0; pid<NUMPROCS; pid++)
+        {
+            blockDur1[pid] = blockStart[pid] - startTime;
+            blockDur2[pid] = blockEnd[0] - startTime;
+            if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                blockLogs[pid].push_back({pid, 1, blockDur1[pid].count(), blockDur2[pid].count()});
         }
         // Verify open lists and buffers are all empty
         #pragma omp parallel for
@@ -237,7 +289,13 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
         {
             if(!openLists[pid].empty())
             {
+                blockStart[pid] = std::chrono::high_resolution_clock::now();
                 omp_set_lock(&allFinishedLock);
+                blockEnd[pid] = std::chrono::high_resolution_clock::now();
+                blockDur1[pid] = blockStart[pid] - startTime;
+                blockDur2[pid] = blockEnd[pid] - startTime;
+                if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                    blockLogs[pid].push_back({pid, 2, blockDur1[pid].count(), blockDur2[pid].count()});
                 allFinished = false;
                 omp_unset_lock(&allFinishedLock);
             }
@@ -250,16 +308,55 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     NodeBuffer &curBuffer = openListsBuffer[pid][srcPID];
                     if(!curBuffer.buffer.empty())
                     {
+                        blockStart[pid] = std::chrono::high_resolution_clock::now();
                         omp_set_lock(&allFinishedLock);
+                        blockEnd[pid] = std::chrono::high_resolution_clock::now();
+                        blockDur1[pid] = blockStart[pid] - startTime;
+                        blockDur2[pid] = blockEnd[pid] - startTime;
+                        if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                            blockLogs[pid].push_back({pid, 2, blockDur1[pid].count(), blockDur2[pid].count()});
                         allFinished = false;
                         omp_unset_lock(&allFinishedLock);
                         break;
                     }
                 }
             }
+            // Synchronization
+            blockStart[pid] = std::chrono::high_resolution_clock::now();
         }
+        blockEnd[0] = std::chrono::high_resolution_clock::now();
+        for(int pid=0; pid<NUMPROCS; pid++)
+        {
+            blockDur1[pid] = blockStart[pid] - startTime;
+            blockDur2[pid] = blockEnd[0] - startTime;
+            if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
+                blockLogs[pid].push_back({pid, 3, blockDur1[pid].count(), blockDur2[pid].count()});
+        }
+
         if(allFinished)
         {
+            // Display logging
+            blockDur1[0] = std::chrono::high_resolution_clock::now() - startTime;
+            double sumBlock = 0;
+            printf("data = [\n");
+            for(int pid=0; pid< NUMPROCS; pid++)
+            {
+                if(blockLogs[pid].empty())
+                {
+                    continue;
+                }
+                printf("\t");
+                for(const auto& log : blockLogs[pid])
+                {
+                    printf("[%d,%d,%f,%f], ", log.pid, log.tag, log.tStart, log.tEnd);
+                    sumBlock += log.tEnd-log.tStart;
+                }
+                printf("\n");
+            }
+            printf("]\n");
+            printf("# Total, block, %% = %f, %f, %f %%\n\n", blockDur1[0].count(), sumBlock, 100*sumBlock/blockDur1[0].count());
+
+            // Return
             int hash = computeHash(goal, foundPathT);
             int goalPid = computeDestination(goal);
             if (visited[goalPid].find(hash) != visited[goalPid].end())

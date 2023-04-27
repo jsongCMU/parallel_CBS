@@ -5,17 +5,17 @@
 #include "AStar.hpp"
 
 std::vector<std::string> evalMaps = {
-    "../instances/test_51.txt",
-    "../instances/test_52.txt",
-    "../instances/test_53.txt",
-    "../instances/test_55.txt",
-    "../instances/maze_map.txt",
-    "../instances/random_map.txt",
-    "../instances/eval_coast.txt",
-    "../instances/eval_maze.txt",
-    "../instances/eval_maze2.txt",
-    "../instances/eval_paris.txt",
-    "../instances/eval_random.txt",
+    // "../instances/test_51.txt",
+    // "../instances/test_52.txt",
+    // "../instances/test_53.txt",
+    // "../instances/test_55.txt",
+    // "../instances/maze_map.txt",
+    // "../instances/random_map.txt",
+    // "../instances/eval_coast.txt",
+    // "../instances/eval_maze.txt",
+    // "../instances/eval_maze2.txt",
+    // "../instances/eval_paris.txt",
+    // "../instances/eval_random.txt",
     "../instances/eval_room.txt",
 };
 
@@ -25,7 +25,7 @@ int main()
     std::string path = "../instances";
     std::string resultFile = "../outputs/log.txt";
     std::string animateFile = "../instances/exp0.txt";
-    const int testAmount = 10;
+    const int testAmount = 1;
     TestTimer ttimer;
     for(int i=0; i<testAmount; i++)
     {
@@ -51,7 +51,10 @@ int main()
                     if(cnt==0)
                         succ = aStarSolver.solve(j, {}, path);
                     else
+                    {
+                        printf("# Agent %d:\n", j);
                         succ = hdaStarSolver.solve(j, {}, path);
+                    }
                     if(!succ){
                         printf("* Failed to solve for agent %d: (%d,%d) -> (%d,%d)\n", j, mapfProblem.startLocs[j].x, mapfProblem.startLocs[j].y, mapfProblem.goalLocs[j].x, mapfProblem.goalLocs[j].y);
                         return 1;
