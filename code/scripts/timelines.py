@@ -51,12 +51,24 @@ for i in range(0,NUMPROCS):
     img1.rectangle([0,i*HEIGHT,TMAX,(i+1)*HEIGHT-MARGIN], fill ='white', outline='black')
 
 # Add blocks
+sumByTag = {}
+sumTotal = 0
 for datum in data:
     x1 = int(datum[2]*SCALE)
     y1 = HEIGHT * datum[0]
     x2 = int(datum[3]*SCALE)
     y2 = y1+HEIGHT-MARGIN
     img1.rectangle([x1,y1+1,x2,y2-1], fill =tagColor[datum[1]], outline =None)
+    
+    sumTotal += datum[3]-datum[2]
+    if(datum[1] in sumByTag):
+        sumByTag[datum[1]] += datum[3]-datum[2]
+    else:
+        sumByTag[datum[1]] = datum[3]-datum[2]
+
+print('Blockage by tag:')
+for key in sumByTag:
+    print(f'\tTag {key}: {sumByTag[key]}, {100*sumByTag[key]/sumTotal}')
 
 # Save
 img.save('../outputs/timeline.png')
