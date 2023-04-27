@@ -48,11 +48,11 @@ int main()
                 {
                     std::vector<Point2> path;
                     bool succ;
+                    printf("# Agent %d:\n", j);
                     if(cnt==0)
                         succ = aStarSolver.solve(j, {}, path);
                     else
                     {
-                        printf("# Agent %d:\n", j);
                         succ = hdaStarSolver.solve(j, {}, path);
                     }
                     if(!succ){

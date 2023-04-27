@@ -81,7 +81,10 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
     std::vector<BlockLog> blockLogs[NUMPROCS];
     std::chrono::time_point<std::chrono::high_resolution_clock> blockStart[NUMPROCS], blockEnd[NUMPROCS], startTime;
     std::chrono::duration<double, std::micro> blockDur1[NUMPROCS], blockDur2[NUMPROCS];
-    const double minTime = 5;
+    const double minTime = 2; // Need to prevent logging of every tiny block; pushes too many things to vector
+    int numNodes[NUMPROCS];
+    for(int i=0; i<NUMPROCS; i++)
+        numNodes[i] = 0;
     startTime = std::chrono::high_resolution_clock::now();
     while(true)
     {
@@ -177,6 +180,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 // Start evaluation; grab current node
                 NodeSharedPtr cur = openLists[pid].top();
                 openLists[pid].pop();
+                numNodes[pid]++;
 
                 // If top of priority queue is worse than ceiling, than everything in open list is worse
                 // Clear open list
@@ -280,8 +284,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
         {
             blockDur1[pid] = blockStart[pid] - startTime;
             blockDur2[pid] = blockEnd[0] - startTime;
-            if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
-                blockLogs[pid].push_back({pid, 1, blockDur1[pid].count(), blockDur2[pid].count()});
+            blockLogs[pid].push_back({pid, 1, blockDur1[pid].count(), blockDur2[pid].count()});
         }
         // Verify open lists and buffers are all empty
         #pragma omp parallel for
@@ -329,8 +332,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
         {
             blockDur1[pid] = blockStart[pid] - startTime;
             blockDur2[pid] = blockEnd[0] - startTime;
-            if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
-                blockLogs[pid].push_back({pid, 3, blockDur1[pid].count(), blockDur2[pid].count()});
+            blockLogs[pid].push_back({pid, 3, blockDur1[pid].count(), blockDur2[pid].count()});
         }
 
         if(allFinished)
@@ -354,7 +356,20 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 printf("\n");
             }
             printf("]\n");
-            printf("# Total, block, %% = %f, %f, %f %%\n\n", blockDur1[0].count(), sumBlock, 100*sumBlock/blockDur1[0].count());
+            printf("# Total, block, %% = %f, %f, %f %%\n", blockDur1[0].count(), sumBlock, 100*sumBlock/blockDur1[0].count());
+            int numNodesTotal = 0;
+            for(int i=0; i<NUMPROCS; i++)
+            {
+                numNodesTotal += numNodes[i];
+            }
+            printf("# Num nodes = %d; ", numNodesTotal);
+            for(int i=0; i<NUMPROCS; i++)
+            {
+                printf("%d (%2.1f %%), ", numNodes[i], 100.0*numNodes[i]/numNodesTotal);
+            }
+            printf("\n");
+            printf("TMAX = int(%.3f)\n", blockDur1[0].count());
+            printf("\n\n");
 
             // Return
             int hash = computeHash(goal, foundPathT);

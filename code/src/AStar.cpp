@@ -62,6 +62,7 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
 {
     Point2 start = _problem.startLocs[agent_id];
     Point2 goal = _problem.goalLocs[agent_id];
+    int numNodes = 0;
 
     // Create constraints table
     int maxTimestep;
@@ -99,9 +100,11 @@ bool AStar::solve(const int agent_id, const std::vector<Constraint> &constraints
     {
         NodeSharedPtr cur = open_list.top();
         open_list.pop();
+        numNodes++;
 
         if (cur->pos == goal && cur->t >= maxTimestep)
         {
+            printf("#\tA* Total nodes = %d\n", numNodes);
             computePath(cur, outputPath);
             return true;
         }
