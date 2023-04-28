@@ -100,7 +100,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 blockDur1[pid] = blockStart[pid] - startTime;
                 blockDur2[pid] = blockEnd[pid] - startTime;
                 if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
-                    blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
+                    blockLogs[pid].push_back({pid, 1, blockDur1[pid].count(), blockDur2[pid].count()});
                 if(allFinished && foundPathG > -0.01)
                 {
                     omp_unset_lock(&allFinishedLock);
@@ -142,7 +142,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 blockDur1[pid] = blockStart[pid] - startTime;
                 blockDur2[pid] = blockEnd[pid] - startTime;
                 if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
-                    blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
+                    blockLogs[pid].push_back({pid, 1, blockDur1[pid].count(), blockDur2[pid].count()});
                 finished[pid] = openLists[pid].empty();
                 omp_unset_lock(&finishedLocks[pid]);
 
@@ -158,7 +158,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                         blockDur1[pid] = blockStart[pid] - startTime;
                         blockDur2[pid] = blockEnd[pid] - startTime;
                         if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
-                            blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
+                            blockLogs[pid].push_back({pid, 1, blockDur1[pid].count(), blockDur2[pid].count()});
                         localAllFinished &= finished[pid];
                         omp_unset_lock(&finishedLocks[pid]);
                         if(!localAllFinished)
@@ -171,7 +171,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                     blockDur1[pid] = blockStart[pid] - startTime;
                     blockDur2[pid] = blockEnd[pid] - startTime;
                     if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
-                        blockLogs[pid].push_back({pid, 0, blockDur1[pid].count(), blockDur2[pid].count()});
+                        blockLogs[pid].push_back({pid, 1, blockDur1[pid].count(), blockDur2[pid].count()});
                     allFinished |= localAllFinished;
                     omp_unset_lock(&allFinishedLock);
                     continue;
@@ -284,7 +284,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
         {
             blockDur1[pid] = blockStart[pid] - startTime;
             blockDur2[pid] = blockEnd[0] - startTime;
-            blockLogs[pid].push_back({pid, 1, blockDur1[pid].count(), blockDur2[pid].count()});
+            blockLogs[pid].push_back({pid, 2, blockDur1[pid].count(), blockDur2[pid].count()});
         }
         // Verify open lists and buffers are all empty
         #pragma omp parallel for
@@ -298,7 +298,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                 blockDur1[pid] = blockStart[pid] - startTime;
                 blockDur2[pid] = blockEnd[pid] - startTime;
                 if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
-                    blockLogs[pid].push_back({pid, 2, blockDur1[pid].count(), blockDur2[pid].count()});
+                    blockLogs[pid].push_back({pid, 3, blockDur1[pid].count(), blockDur2[pid].count()});
                 allFinished = false;
                 omp_unset_lock(&allFinishedLock);
             }
@@ -317,7 +317,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
                         blockDur1[pid] = blockStart[pid] - startTime;
                         blockDur2[pid] = blockEnd[pid] - startTime;
                         if(blockDur2[pid].count()-blockDur1[pid].count() > minTime)
-                            blockLogs[pid].push_back({pid, 2, blockDur1[pid].count(), blockDur2[pid].count()});
+                            blockLogs[pid].push_back({pid, 3, blockDur1[pid].count(), blockDur2[pid].count()});
                         allFinished = false;
                         omp_unset_lock(&allFinishedLock);
                         break;
@@ -332,7 +332,7 @@ bool HDAStar::solve(const int agent_id, const std::vector<Constraint> &constrain
         {
             blockDur1[pid] = blockStart[pid] - startTime;
             blockDur2[pid] = blockEnd[0] - startTime;
-            blockLogs[pid].push_back({pid, 3, blockDur1[pid].count(), blockDur2[pid].count()});
+            blockLogs[pid].push_back({pid, 4, blockDur1[pid].count(), blockDur2[pid].count()});
         }
 
         if(allFinished)
