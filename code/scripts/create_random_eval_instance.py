@@ -32,7 +32,7 @@ def import_map(filename):
 
 def in_occ_space(map, x, y):
     up = max(y-1, 0)
-    down = min(y+1, len(map) - 1)
+    down = min(y+1, len(map[0]) - 1)
     left = max(x-1, 0)
     right = min(x+1, len(map) - 1)
 
@@ -40,11 +40,13 @@ def in_occ_space(map, x, y):
 
 
 def get_free_location(map, locations):
-    x, y = np.random.randint(0, len(map) - 1, size=2)
+    x = np.random.randint(0, len(map))
+    y = np.random.randint(0, len(map[0]))
 
     # Keep regenerating until a free point is found
     while in_occ_space(map, x, y) or (x, y) in locations:
-        x, y = np.random.randint(0, len(map), size=2)
+        x = np.random.randint(0, len(map))
+        y = np.random.randint(0, len(map[0]))
 
     return x, y
 
