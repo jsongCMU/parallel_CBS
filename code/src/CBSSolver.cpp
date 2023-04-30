@@ -25,7 +25,7 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
     CTNodeSharedPtr root = std::make_shared<CTNode>();
     root->paths.resize(instance.numAgents);
     root->id = 0;
-    numNodesGenerated++;
+    numNodesGenerated = 1;
 
     // Create paths for all agents
     #pragma omp parallel for num_threads(MAXTHREADS) schedule(dynamic, (instance.numAgents / MAXTHREADS) + 1)
@@ -59,7 +59,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
         // If no collisions in the node then return solution
         if (cur->collisionList.size() == 0)
         {
-            printf("seq pq %d\n", numNodesGenerated);
             return cur->paths;
         }
 
@@ -71,8 +70,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
             child->constraintList = cur->constraintList;
             child->constraintList.push_back(c);
             child->paths = cur->paths;
-
-            // printf("New cons = %d (%d,%d) %d @ %d\n", c.agentNum, c.location.first.x, c.location.first.y, c.isVertexConstraint, c.t);
 
             // Replan only for the agent that has the new constraint
             child->paths[c.agentNum].clear();
@@ -145,7 +142,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
             // If no collisions in the node then return solution
             if (cur->collisionList.size() == 0)
             {
-                printf("prio pq %d\n", numNodesGenerated);
                 bestCost = cur->cost;
                 best = cur;
                 solutionFound = true;
@@ -160,8 +156,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
                 child->constraintList = cur->constraintList;
                 child->constraintList.push_back(c);
                 child->paths = cur->paths;
-
-                // printf("New cons = %d (%d,%d) %d @ %d\n", c.agentNum, c.location.first.x, c.location.first.y, c.isVertexConstraint, c.t);
 
                 // Replan only for the agent that has the new constraint
                 child->paths[c.agentNum].clear();
