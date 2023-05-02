@@ -57,21 +57,37 @@ void MAPFGenerator::generateStartGoal(MAPFInstance& problem)
     // Generate random start and end goals
     problem.startLocs.clear();
     problem.goalLocs.clear();
+
+    std::unordered_set<int> startLocs;
+    std::unordered_set<int> goalLocs;
+
     for(int i=0; i<problem.numAgents; i++)
     {
-        problem.startLocs.push_back(getFreeCell(problem));
-        problem.goalLocs.push_back(getFreeCell(problem));
+        Point2 start = getFreeCell(problem, startLocs);
+        Point2 goal = getFreeCell(problem, goalLocs);
+
+
+        problem.startLocs.push_back(start);
+        problem.goalLocs.push_back(goal);
+
+        startLocs.insert(computeHash(start.x, start.y, problem.cols));
+        goalLocs.insert(computeHash(goal.x, goal.y, problem.cols));
     }
 }
 
-Point2 MAPFGenerator::getFreeCell(const MAPFInstance& problem)
+Point2 MAPFGenerator::getFreeCell(const MAPFInstance& problem, const std::unordered_set<int> &prevLocs)
 {
     int x,y;
     do{
         x = rand() % problem.rows;
         y = rand() % problem.cols;
-    } while(problem.map[x][y]);
+    } while(problem.map[x][y] || prevLocs.count(computeHash(x, y, problem.cols)));
     return {x,y};
+}
+
+int inline MAPFGenerator::computeHash(int x, int y, int cols)
+{
+    return x * cols + y;
 }
 
 bool MAPFGenerator::isValid(const MAPFInstance& problem)

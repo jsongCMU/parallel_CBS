@@ -64,7 +64,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
         // If no collisions in the node then return solution
         if (cur->collisionList.size() == 0)
         {
-            printf("seq pq %d\n", numNodesGenerated);
             return cur->paths;
         }
 
@@ -145,8 +144,6 @@ std::vector<std::vector<Point2>> CBSSolver::solveParallel(MAPFInstance instance,
                 // Check if solution found
                 if (cur->collisionList.size() == 0)
                 {
-                    printf("prio pq %d\n", numNodesGenerated);
-
                     // Only save the solution if it is better than the best seen so far
                     if (cur->cost < bestCost || bestCost < 0)
                     {
